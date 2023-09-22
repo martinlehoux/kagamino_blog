@@ -1,20 +1,20 @@
-baseURL = 'http://example.org/'
-copyright = "{year}" # To make 2007 - 2022. Just add before {year} example: 2007 - {year}
+baseURL = 'http://blog.kagamino.dev/'
+copyright = "{year}"                  # To make 2007 - 2022. Just add before {year} example: 2007 - {year}
 languageCode = 'en-us'
 theme = 'lowkey'
-title = 'Lowkey Hugo'
+title = "Kagamino's Blog"
 enableRobotsTXT = true
 
 # List Config
-summaryLength= 15
+summaryLength = 15
 paginate = 5
 
 [markup.highlight]
-      codeFences = false
-      guessSyntax = false
-      hl_Lines = ""
-      lineNoStart = 1
-      lineNos = false
-      lineNumbersInTable = false
-      tabWidth = 4
-      noClasses = false
+codeFences = false
+guessSyntax = false
+hl_Lines = ""
+lineNoStart = 1
+lineNos = false
+lineNumbersInTable = false
+tabWidth = 4
+noClasses = false
