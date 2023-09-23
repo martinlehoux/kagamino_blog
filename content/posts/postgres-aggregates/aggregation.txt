@@ -1,0 +1,36 @@
+                                                                               QUERY PLAN                                                                                
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ GroupAggregate  (cost=1.00..280600.32 rows=10000 width=32) (actual time=5.206..2498.463 rows=10000 loops=1)
+   Output: products.id, products.name, count(DISTINCT reviews.id), count(DISTINCT orders.id)
+   Group Key: products.id
+   Buffers: shared hit=1093923
+   ->  Merge Left Join  (cost=1.00..205500.32 rows=10000000 width=24) (actual time=4.720..1482.634 rows=9995979 loops=1)
+         Output: products.id, products.name, reviews.id, orders.id
+         Merge Cond: (products.id = orders.product_id)
+         Buffers: shared hit=1093923
+         ->  Merge Left Join  (cost=0.58..7362.19 rows=100000 width=20) (actual time=4.706..51.596 rows=100000 loops=1)
+               Output: products.id, products.name, reviews.id
+               Merge Cond: (products.id = reviews.product_id)
+               Buffers: shared hit=99765
+               ->  Index Scan using products_pkey on public.products  (cost=0.29..387.29 rows=10000 width=16) (actual time=0.010..1.926 rows=10000 loops=1)
+                     Output: products.id, products.name, products.description, products.price, products.created_at
+                     Buffers: shared hit=143
+               ->  Index Scan using reviews_product_id_idx on public.reviews  (cost=0.29..5699.91 rows=100000 width=8) (actual time=0.008..34.368 rows=100000 loops=1)
+                     Output: reviews.id, reviews.review_date, reviews.comment, reviews.product_id
+                     Buffers: shared hit=99622
+         ->  Materialize  (cost=0.42..50388.13 rows=1000000 width=8) (actual time=0.010..626.788 rows=9995969 loops=1)
+               Output: orders.id, orders.order_date, orders.customer_name, orders.product_id
+               Buffers: shared hit=994158
+               ->  Index Scan using orders_product_id_idx on public.orders  (cost=0.42..47888.13 rows=1000000 width=8) (actual time=0.009..324.399 rows=1000000 loops=1)
+                     Output: orders.id, orders.order_date, orders.customer_name, orders.product_id
+                     Buffers: shared hit=994158
+ Planning:
+   Buffers: shared hit=181
+ Planning Time: 0.467 ms
+ JIT:
+   Functions: 15
+   Options: Inlining false, Optimization false, Expressions true, Deforming true
+   Timing: Generation 0.365 ms, Inlining 0.000 ms, Optimization 0.194 ms, Emission 4.497 ms, Total 5.055 ms
+ Execution Time: 2511.587 ms
+(32 rows)
+

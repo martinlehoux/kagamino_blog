@@ -1,0 +1,71 @@
+                                                                            QUERY PLAN                                                                             
+-------------------------------------------------------------------------------------------------------------------------------------------------------------------
+ Hash Left Join  (cost=19871.86..20138.39 rows=10000 width=32) (actual time=84.427..88.463 rows=10000 loops=1)
+   Output: products.id, products.name, COALESCE(product_reviews.num_reviews, '0'::bigint), COALESCE(product_orders.num_orders, '0'::bigint)
+   Inner Unique: true
+   Hash Cond: (products.id = product_orders.product_id)
+   Buffers: shared hit=8402
+   ->  Hash Left Join  (cost=2754.21..2994.48 rows=10000 width=24) (actual time=19.962..22.583 rows=10000 loops=1)
+         Output: products.id, products.name, product_reviews.num_reviews
+         Inner Unique: true
+         Hash Cond: (products.id = product_reviews.product_id)
+         Buffers: shared hit=1049
+         ->  Seq Scan on public.products  (cost=0.00..214.00 rows=10000 width=16) (actual time=0.002..0.719 rows=10000 loops=1)
+               Output: products.id, products.name, products.description, products.price, products.created_at
+               Buffers: shared hit=114
+         ->  Hash  (cost=2631.44..2631.44 rows=9822 width=12) (actual time=19.909..19.911 rows=10000 loops=1)
+               Output: product_reviews.num_reviews, product_reviews.product_id
+               Buckets: 16384  Batches: 1  Memory Usage: 558kB
+               Buffers: shared hit=935
+               ->  Subquery Scan on product_reviews  (cost=2435.00..2631.44 rows=9822 width=12) (actual time=17.667..18.894 rows=10000 loops=1)
+                     Output: product_reviews.num_reviews, product_reviews.product_id
+                     Buffers: shared hit=935
+                     ->  HashAggregate  (cost=2435.00..2533.22 rows=9822 width=12) (actual time=17.667..18.342 rows=10000 loops=1)
+                           Output: reviews.product_id, count(reviews.id)
+                           Group Key: reviews.product_id
+                           Batches: 1  Memory Usage: 1425kB
+                           Buffers: shared hit=935
+                           ->  Seq Scan on public.reviews  (cost=0.00..1935.00 rows=100000 width=8) (actual time=0.011..4.796 rows=100000 loops=1)
+                                 Output: reviews.id, reviews.review_date, reviews.comment, reviews.product_id
+                                 Buffers: shared hit=935
+   ->  Hash  (cost=16993.16..16993.16 rows=9959 width=12) (actual time=64.403..64.453 rows=10000 loops=1)
+         Output: product_orders.num_orders, product_orders.product_id
+         Buckets: 16384  Batches: 1  Memory Usage: 558kB
+         Buffers: shared hit=7353
+         ->  Subquery Scan on product_orders  (cost=16793.98..16993.16 rows=9959 width=12) (actual time=62.164..63.412 rows=10000 loops=1)
+               Output: product_orders.num_orders, product_orders.product_id
+               Buffers: shared hit=7353
+               ->  Finalize HashAggregate  (cost=16793.98..16893.57 rows=9959 width=12) (actual time=62.164..62.867 rows=10000 loops=1)
+                     Output: orders.product_id, count(orders.id)
+                     Group Key: orders.product_id
+                     Batches: 1  Memory Usage: 1425kB
+                     Buffers: shared hit=7353
+                     ->  Gather  (cost=14603.00..16694.39 rows=19918 width=12) (actual time=56.542..58.444 rows=30000 loops=1)
+                           Output: orders.product_id, (PARTIAL count(orders.id))
+                           Workers Planned: 2
+                           Workers Launched: 2
+                           Buffers: shared hit=7353
+                           ->  Partial HashAggregate  (cost=13603.00..13702.59 rows=9959 width=12) (actual time=54.293..54.991 rows=10000 loops=3)
+                                 Output: orders.product_id, PARTIAL count(orders.id)
+                                 Group Key: orders.product_id
+                                 Batches: 1  Memory Usage: 1425kB
+                                 Buffers: shared hit=7353
+                                 Worker 0:  actual time=53.312..53.970 rows=10000 loops=1
+                                   Batches: 1  Memory Usage: 1425kB
+                                   Buffers: shared hit=2406
+                                 Worker 1:  actual time=53.322..54.071 rows=10000 loops=1
+                                   Batches: 1  Memory Usage: 1425kB
+                                   Buffers: shared hit=2395
+                                 ->  Parallel Seq Scan on public.orders  (cost=0.00..11519.67 rows=416667 width=8) (actual time=0.006..13.835 rows=333333 loops=3)
+                                       Output: orders.id, orders.order_date, orders.customer_name, orders.product_id
+                                       Buffers: shared hit=7353
+                                       Worker 0:  actual time=0.008..13.768 rows=327216 loops=1
+                                         Buffers: shared hit=2406
+                                       Worker 1:  actual time=0.007..13.584 rows=325720 loops=1
+                                         Buffers: shared hit=2395
+ Planning:
+   Buffers: shared hit=171
+ Planning Time: 0.410 ms
+ Execution Time: 89.503 ms
+(67 rows)
+

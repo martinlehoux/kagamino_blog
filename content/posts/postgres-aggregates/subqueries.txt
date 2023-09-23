@@ -1,0 +1,39 @@
+                                                                     QUERY PLAN                                                                     
+----------------------------------------------------------------------------------------------------------------------------------------------------
+ Seq Scan on public.products  (cost=0.00..4131733.02 rows=10000 width=32) (actual time=71.607..619.401 rows=10000 loops=1)
+   Output: products.id, products.name, (SubPlan 1), (SubPlan 2)
+   Buffers: shared hit=1142915
+   SubPlan 1
+     ->  Aggregate  (cost=41.42..41.43 rows=1 width=8) (actual time=0.006..0.006 rows=1 loops=10000)
+           Output: count(reviews.id)
+           Buffers: shared hit=119508
+           ->  Bitmap Heap Scan on public.reviews  (cost=4.37..41.39 rows=10 width=4) (actual time=0.002..0.005 rows=10 loops=10000)
+                 Output: reviews.id, reviews.review_date, reviews.comment, reviews.product_id
+                 Recheck Cond: (reviews.product_id = products.id)
+                 Heap Blocks: exact=99508
+                 Buffers: shared hit=119508
+                 ->  Bitmap Index Scan on reviews_product_id_idx  (cost=0.00..4.37 rows=10 width=0) (actual time=0.001..0.001 rows=10 loops=10000)
+                       Index Cond: (reviews.product_id = products.id)
+                       Buffers: shared hit=20000
+   SubPlan 2
+     ->  Aggregate  (cost=371.71..371.72 rows=1 width=8) (actual time=0.048..0.048 rows=1 loops=10000)
+           Output: count(orders.id)
+           Buffers: shared hit=1023293
+           ->  Bitmap Heap Scan on public.orders  (cost=5.20..371.46 rows=100 width=4) (actual time=0.008..0.044 rows=100 loops=10000)
+                 Output: orders.id, orders.order_date, orders.customer_name, orders.product_id
+                 Recheck Cond: (orders.product_id = products.id)
+                 Heap Blocks: exact=993293
+                 Buffers: shared hit=1023293
+                 ->  Bitmap Index Scan on orders_product_id_idx  (cost=0.00..5.17 rows=100 width=0) (actual time=0.002..0.002 rows=100 loops=10000)
+                       Index Cond: (orders.product_id = products.id)
+                       Buffers: shared hit=30000
+ Planning:
+   Buffers: shared hit=137
+ Planning Time: 0.307 ms
+ JIT:
+   Functions: 18
+   Options: Inlining true, Optimization true, Expressions true, Deforming true
+   Timing: Generation 0.404 ms, Inlining 36.770 ms, Optimization 20.753 ms, Emission 13.916 ms, Total 71.843 ms
+ Execution Time: 632.764 ms
+(35 rows)
+
