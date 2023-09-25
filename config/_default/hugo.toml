@@ -19,3 +19,10 @@ lineNumbersInTable = false
 tabWidth = 4
 noClasses = true
 style = "monokai"
+
+[outputs]
+section = ["html", "rss"]
+
+[author]
+email = 'martin@lehoux.net'
+name = "Martin 'Kagamino' Lehoux"
