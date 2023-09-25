@@ -25,4 +25,4 @@ FROM
   products;
 
 -- WHERE
---   products.id % 10 = 0;
+--   products.name ilike '%0';

@@ -8,7 +8,7 @@ WITH product_with_reviews AS (
     products
     LEFT JOIN reviews ON reviews.product_id = products.id
     -- WHERE
-    --   products.id % 10 = 0
+    --   products.name ilike '%0'
   GROUP BY
     products.id,
     products.name

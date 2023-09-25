@@ -31,4 +31,4 @@ FROM
   LEFT JOIN product_orders ON products.id = product_orders.product_id;
 
 -- WHERE
---   products.id % 10 = 0
+--   products.name ilike '%0'
