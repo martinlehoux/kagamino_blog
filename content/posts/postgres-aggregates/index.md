@@ -1,5 +1,5 @@
 ---
-title: "Efficiente PostgreSQL Aggregations"
+title: "Efficient PostgreSQL Aggregations"
 draft: false
 date: 2023-09-25
 description: "Diving into PostgreSQL query plans to improve our tooling"
@@ -19,7 +19,7 @@ Here is the simpler version of the problem:
 - We want to build a UI where we display a list of products, along with their number of reviews, and their number of orders
 - We only have basic indices on the foreign keys for a start
 
-By the end of this reading, I hoope you will be able to:
+By the end of this reading, I hope you will be able to:
 
 - Analyze a slow query with easy to use tools
 - Understand in what order are executed the different parts of a query
@@ -34,9 +34,9 @@ The same query could be translated into different plans by different engines (Po
 
 <!-- TODO: Add scheme -->
 
-We will see that there are several way to write a query that outputs the same results, but each way will guide the engine into different directions on what plan will be used. To understand how our query is translated by Postgres, we use `EXPLAIN ANALYSE` before our query to ask Postgres to output the plan instead of the results. The `ANALYZE` keyword will even add runtime data (timings, costs) to the plan, after executing the query.
+We will see that there are several way to write a query that outputs the same results, but each way will guide the engine into different directions on what plan will be used. To understand how our query is translated by Postgres, we use `EXPLAIN ANALYZE` before our query to ask Postgres to output the plan instead of the results. The `ANALYZE` keyword will even add runtime data (timings, costs) to the plan, after executing the query.
 
-We will then use a **vizualisation tool** to make it easier to read the plan. I use **Dalibo Explain**[^dalibo-explain], which is a free tool that can be used online. It is also open source and standalone, so you can download the HTML page to use it locally.
+We will then use a **visualization tool** to make it easier to read the plan. I use **Dalibo Explain**[^dalibo-explain], which is a free tool that can be used online. It is also open source and standalone, so you can download the HTML page to use it locally.
 
 I will also use **hyperfine**[^hyperfine] to benchmark the different queries. You don't necessarily need it to test the queries at home.
 
@@ -85,7 +85,7 @@ GROUP BY
   products.id;
 ```
 
-Adding the `DISTINCT` keyword here fixes this behaviour, and we finally get what we were looking for. Note that this fix only works here because the aggregation function is `COUNT`: it would not have worked if we were computing the average review rating.
+Adding the `DISTINCT` keyword here fixes this behavior, and we finally get what we were looking for. Note that this fix only works here because the aggregation function is `COUNT`: it would not have worked if we were computing the average review rating.
 
 Now that we found an obvious way to compute the correct result, let’s take a look at performances.
 
@@ -142,11 +142,13 @@ Benchmark 1: psql postgres://postgres@localhost:5432/postgres -f subqueries.sql
 
 This query **takes now 607ms**. Sounds like a good speed-up
 
-When we analyse the new query plan, we can see some major differences:
+When we analyze the new query plan, we can see some major differences:
 
 ![Query plan for the subqueries](subqueries.png)
 
-There are now subplans: because the subqueries reference a column of the outer query (`products.id`), these must be run for each row that is found in `products`. This is shown by the keywords `loops: 10000`. This is called a **correlated subquery**[^wiki-correlated-subquery].
+<!-- TODO: Display loops in the plan -->
+
+There are now sub-plans: because the subqueries reference a column of the outer query (`products.id`), these must be run for each row that is found in `products`. This is shown by the keywords `loops: 10000`. This is called a **correlated subquery**[^wiki-correlated-subquery].
 
 These queries, even if numerous, are highly efficient because they can use the indexes we created to quickly find to corresponding rows: this is what the Bitmap Index Scan and Bitmap Heap Scan show.
 
@@ -194,7 +196,7 @@ Benchmark 1: psql postgres://postgres@localhost:5432/postgres -f merging-ctes.sq
   Range (min … max):    85.8 ms …  94.5 ms    32 runs
 ```
 
-This query takes **90ms**, which is an even greater speedup. What happenned this time?
+This query takes **90ms**, which is an even greater speedup. What happened this time?
 
 - Get all the reviews, then aggregate by product id in one pass (HashAggregate)
 - Same goes for orders, but width the addition of parallelism (cost CPU, but reduce time)
@@ -224,15 +226,17 @@ We can show this by adding a modulo filter on the product_id to only select 10% 
 
 This problem is a simplification of real issues I had at work: we were using a query base on correlated subqueries, and we run into some performance issues.
 
-I though that using aggregations would solve it, but in fact it slowed down, and even added bugs from couting duplicate rows.
+I though that using aggregations would solve it, but in fact it slowed down, and even added bugs from counting duplicate rows.
 
 There is not a single way good way to write queries, but here are the takeaways I got from this experience:
 
 - Avoid queries which use aggregation functions on several "directions": you will likely shoot yourself in the foot and obtain wrong results
-- When fetching a lot of data, it is efficient to aggregate each "direction" alone, before mergin all results together with the main table: it will leverage parallelism and reduce the memory used
+- When fetching a lot of data, it is efficient to aggregate each "direction" alone, before merging all results together with the main table: it will leverage parallelism and reduce the memory used
 - When selecting only a subset of the main table, using subqueries will see the most impressive speed gains (if the filter depends on the main table data: filtering products based on the number of reviews they received will append after having computed all the data)
 
 But in the end, you should always rely on benchmarking to compare different solutions!
+
+<!-- TODO: Opening on how to benchmark, deeper -->
 
 ## Resources
 
