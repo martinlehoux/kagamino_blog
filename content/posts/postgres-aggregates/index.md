@@ -48,7 +48,7 @@ We will see that there are several ways to write a query that outputs the same r
 
 We will then use a **visualization tool** to make it easier to read the plan. I use **Dalibo Explain**[^dalibo-explain], which is a free tool that can be used online. It is also open source and standalone, so you can download the HTML page to use it locally.
 
-I will also use **hyperfine**[^hyperfine] to benchmark the different queries. You don't necessarily need it to test the queries at home.
+I will also use **hyperfine**[^hyperfine] to benchmark the different queries. You don't necessarily need it to test the queries at home. Note that there will be a difference between the performances of the benchmark and the `EXPLAIN ANALYZE`, that's expected.
 
 ## 1. Aggregation
 
@@ -107,8 +107,6 @@ Benchmark 1: psql postgres://postgres@localhost:5432/postgres -f aggregation.sql
 
 On my computer, with the data provided in the introduction, I measured this query takes **1622ms** to execute. This seems too slow for a “web app” usage where you would need to query this data on demand for a user.
 
-<!-- Reanalyse plan because of time diff (2.4 -> 1.6) -->
-
 Using Dalibo, we can see which are the most costly parts of the query:
 
 ![Query plan for the aggregation query on several joins](aggregation.png)
@@ -155,8 +153,6 @@ This query **takes now 607ms**. Sounds like a good 3x speed-up.
 When we analyze the new query plan, we can see some major differences:
 
 ![Query plan for the subqueries](subqueries.png)
-
-<!-- TODO: Display loops in the plan -->
 
 There are now sub-plans: because the subqueries reference a column of the outer query (`products.id`), these must be run for each row that is found in `products`. This is shown by the keywords `loops: 10000`. This is called a **correlated subquery**[^wiki-correlated-subquery].
 
