@@ -1,7 +1,7 @@
 ---
 title: "Efficient PostgreSQL Aggregations"
 draft: false
-date: 2023-09-25
+date: 2023-10-04
 description: "Diving into PostgreSQL query plans to improve our tooling"
 categories:
   - PostgreSQL
