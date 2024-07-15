@@ -2,6 +2,7 @@
 title: "Efficient PostgreSQL Aggregations"
 draft: false
 date: 2023-10-04
+lastmod: 2024-07-15
 description: "Diving into PostgreSQL query plans to improve our tooling"
 categories:
   - PostgreSQL
@@ -9,7 +10,7 @@ categories:
 
 I recently stumbled upon a problem while crafting queries for PostgreSQL at work. We had a query with several correlated subqueries that was becoming too slow for the intended use (a search). I thought that using aggregations would solve it, but in fact it slowed it down, and even added bugs from counting duplicate rows.
 
-I could'nt find easily accessible knowledge about how to improve it on the Internet, so I decided to simplify the problem to its core and to investigate. This article is the walkthrough of my findings.
+I couldn't find easily accessible knowledge about how to improve it on the Internet, so I decided to simplify the problem to its core and to investigate. This article is the walkthrough of my findings.
 
 Here is the simpler version of the problem:
 
@@ -23,14 +24,12 @@ Here is the simpler version of the problem:
 
 I will explain the tools I used to investigate, then we'll build 3 different queries which give the same result, but have different performance.
 
-<!-- TODO: TLDR? -->
-
 By the end of this reading, I hope you will be able to:
 
 - Analyze a slow query with easy-to-use tools
 - Understand the order in which the different parts of a query are executed
 
-## Basics of PostgreSQL analysis
+## Basics of PostgreSQL analysis {#postgres-analysis}
 
 To solve today's problem, we are going to need several tools and concepts.
 
@@ -42,15 +41,13 @@ The same query could be translated into different plans by:
 - different versions of the same engine (performance gains between two Postgres versions are often due to plan optimizations)
 - the exact same engine, but with different underlying data
 
-<!-- TODO: Add scheme -->
-
 We will see that there are several ways to write a query that outputs the same results, but each way will guide the engine into different directions on what plan will be used. To understand how our query is translated by Postgres, we use `EXPLAIN ANALYZE` before our query to ask Postgres to output the plan instead of the results. The `ANALYZE` keyword will even add runtime data (timings, costs) to the plan, after executing the query.
 
 We will then use a **visualization tool** to make it easier to read the plan. I use **Dalibo Explain**[^dalibo-explain], which is a free tool that can be used online. It is also open source and standalone, so you can download the HTML page to use it locally.
 
 I will also use **hyperfine**[^hyperfine] to benchmark the different queries. You don't necessarily need it to test the queries at home. Note that there will be a difference between the performances of the benchmark and the `EXPLAIN ANALYZE`, that's expected.
 
-## 1. Aggregation
+## 1. Aggregation {#1.aggregation}
 
 My first approach to this problem was to use tools I was taught when learning SQL at university. If I want to summarize some information, aggregations are the way to go, right?
 
@@ -116,7 +113,7 @@ Using Dalibo, we can see which are the most costly parts of the query:
 
 We can guess from this plan that all the data is merged into an enormous intermediate in-memory table, which is then processed for computing our aggregations. Let’s take these insights into account and try building a more efficient version.
 
-## 2. Subqueries
+## 2. Subqueries {#2.subqueries}
 
 We know that we want to avoid merging all the data together before making computations, because it adds a lot of memory pressure that slows the whole pipeline.
 
@@ -158,7 +155,7 @@ There are now sub-plans: because the subqueries reference a column of the outer 
 
 These queries, even if numerous, are highly efficient because they can use the indexes we created to quickly find to corresponding rows: this is what the Bitmap Index Scan and Bitmap Heap Scan show.
 
-## 3. Merging Common Table Expressions
+## 3. Merging Common Table Expressions {#3.ctes}
 
 We have seen two ways to think about this problem, both very different. A much better query that would have the best of both approaches is one that would avoid the enormous intermediate table while also avoiding having too many loops.
 
@@ -212,7 +209,7 @@ There you go, this query takes **90ms**, which is a 15x speedup compared to the 
 
 One requirement for this usage is that the group by is on the product id : no need to load the product to group rows together. For instance, if we wanted to group by the product creation date, it would require intermediate join on the product table.
 
-## Adding filtering requirements
+## Adding filtering requirements {#filters}
 
 Now that we found a query that executes in 90ms, compared to the initial 1622ms, it seems that we found a good pattern.
 
@@ -228,7 +225,7 @@ We can show this by adding a modulo filter on the product_id to only select 10% 
 | Subquery    | 607            | 69            |
 | Merged CTE  | 90             | 75            |
 
-## Wrapping up
+## Wrapping up {#conclusion}
 
 There is not a single good way to write queries. As often, it is about trade-offs. But had I to choose, here are the key takeaways I got from this experience:
 
@@ -237,8 +234,6 @@ There is not a single good way to write queries. As often, it is about trade-off
 - When selecting only a subset of the main table, using subqueries will see the most impressive speed gains (if the filter depends on the main table data: filtering products based on the number of reviews they received will append after having computed all the data)
 
 But in the end, you should always rely on benchmarking to compare different solutions!
-
-<!-- TODO: Opening on how to benchmark, deeper -->
 
 ## Resources
 
