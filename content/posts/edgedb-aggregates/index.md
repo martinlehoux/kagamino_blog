@@ -1,25 +1,27 @@
 ---
 title: "Comparing aggregation between EdgeDB and Postgres"
-draft: true
-date: 2024-07-15
+draft: false
+date: 2024-09-24
 description: "EdgeDB is a layer above Postgres, as it uses it as the underlying engine. How can we harness the power of Postgres through this interface?"
 categories:
   - PostgreSQL
 ---
 
-I discoverd [EdgeDB](https://www.edgedb.com/) in one of the newsletters I follow.
-When I saw it proposes an more expressive interface over a PostgreSQL database, I thought it would be interesting to see if such an interface made it possible to tweak a query the same way I did in my previous [article on aggregations on Postgres]({{<ref "posts/postgres-aggregates">}}).
+In my [previous article on aggregations on Postgres]({{<ref "posts/postgres-aggregates">}}), we explored different ways of building SQL queries that join several tables.
 
-Let's embark on my journey for this investigation! I'll show you how to replicate the benchmark setup (there were a few quirks!), what queries to build to replicate the loads from my last post, and a few thoughts to try and explain the results.
+I discovered [EdgeDB](https://www.edgedb.com/) in one of my newsletters.
+When I saw that it proposes a more expressive interface over a PostgreSQL database, I thought it would be interesting to see if such an interface would make it possible to tweak a query performance.
+
+Let's embark on my journey to investigate! I'll show you how to replicate the benchmark setup (there were a few quirks!), what queries to build to replicate the loads from my last post, and a few thoughts to try and explain the results.
 
 The EdgeDB documentation is quite good, and it's really easy to get started with it using `npx`.
 This will install both the client and the server.
 
-_Just as a reminder: I have no claim on the validity of these benchmarks. There is no control on the resources allocated to each server, or the Postgres settings used in this post or the last one. But the orders of magnitude are already telling us a lot, I think._
+_Just as a reminder: I have no claim on the validity of these benchmarks. There is no control over the resources allocated to each server or the Postgres settings used in this post. But the orders of magnitude are already telling us a lot, I think._
 
 ## First attempt {#first-attempt}
 
-I don't know anything about EdgeDB prior to writing this post, but the concepts are easy to grasp and with a little trial and error, I am able to write code that makes sense (even if I am not able to comprehend it, as you will see).
+I don't know anything about EdgeDB before writing this post, but the concepts are easy to grasp and with a little trial and error, I am able to write code that makes sense (even if I am not able to comprehend it, as you will see).
 
 As a reminder, here is the SQL schema I used in the previous post:
 
@@ -45,7 +47,7 @@ CREATE TABLE reviews(
 );
 ```
 
-With a little help from Github Copilot, here is the EdgeQL schema I end up with (sorry for no syntax highlighting):
+With a little help from Github Copilot, here is the EdgeQL schema I ended up with (sorry for no syntax highlighting):
 
 ```edgeql
 module default {
@@ -71,8 +73,8 @@ module default {
 ```
 
 Then the script to generate the data: the syntax is a little bit different, but EdgeQL has variables and for loops so you can write some pretty expressive code.
-The main difficulty is that links must use entities, where in Postgres you can use the ID directly: you have to run subqueries in EdgeQL.
-You might notice the data is a little bit different: there are not exactly 1M orders and 100k reviews, but each product get a random number of each such as we would have around these numbers in total at the end.
+The main difficulty is that links must use entities, whereas in Postgres you can use the ID directly: you have to run subqueries in EdgeQL.
+You might notice the data is a little bit different: there are not exactly 1M orders and 100k reviews, but each product gets a random number of each such as we would have around these numbers in total at the end.
 
 ```edgeql
 for i in (select range_unpack(range(0, 10_000)))
@@ -101,7 +103,7 @@ With the correct data, I can then benchmark the most idiomatic EdgeQL query to s
 
 > We want to build a UI where we display a list of products, along with their number of reviews, and their number of orders
 
-EdgeQL does fulfill it's claim on expressiveness: the query is obvious and very short to write:
+EdgeQL does fulfill its claim on expressiveness: the query is obvious and very short to write:
 
 ```edgeql
 select Product {
@@ -117,12 +119,12 @@ Attempt 1: npx edgedb query "select Product { id, order_count := count(.orders),
   Range (min … max):    1.530 s …  1.637 s    10 runs
 ```
 
-This result (1.576 s ± 0.036 s) is quite interesting, because it is very close to the result of [Part 1 of the previous post]({{<ref "posts/postgres-aggregates#1.aggregation">}}) (1.622 s ± 0.028 s). So my first conclusion is that EdgeDB converts my EdgeQL query into an equivalent of my first naive approach.
+This result (1.576 s ± 0.036 s) is quite interesting because it is very close to the result of [Part 1 of the previous post]({{<ref "posts/postgres-aggregates#1.aggregation">}}) (1.622 s ± 0.028 s). So my first conclusion is that EdgeDB converts my EdgeQL query into an equivalent of my first naive approach.
 
 ## Fixing my schema mistakes {#fixing-schema}
 
 Before writing this article and it's conclusion, I want to check the believability of my results with the community.
-I don't know a lot about EdgeDB, so maybe someone will point a mistake that would invalidate my results.
+I don't know a lot about EdgeDB, so maybe someone will point out a mistake that would invalidate my results.
 
 As I expected, [@winnerlein](https://github.com/winnerlein) explains to me in the [Github discussion](https://github.com/edgedb/edgedb/discussions/7506) that my use of `multi` in the schema involves the creation of a join table in Postgres.
 
@@ -161,7 +163,7 @@ module default {
 }
 ```
 
-I don't really understand why, but I have more trouble generating the test data for this schema. After several attempts, and syntax errors from the EdgeQL client, I end up using a simple Python script to generate the data:
+I don't understand why, but I have more trouble generating the test data for this schema. After several attempts and syntax errors from the EdgeQL client, I end up using a simple Python script to generate the data:
 
 ```py
 import random
@@ -200,7 +202,7 @@ for k in (select range_unpack(range(0, <int64>$range_end)))
 ```
 
 With the data in place, we can now query it.
-The query is a little different, but still quite expressive:
+The query is a little different but still quite expressive:
 
 ```edgeql
 select Product {
@@ -250,11 +252,11 @@ This plan is interesting to me for two reasons:
 1. We can validate that EdgeDB created the indices on the foreign key all by itself (we had to create them by hand in the postgres version)
 2. We see that EdgeDB chose an approach similar to our Subquery version from Postgres: we see 10k loops, so one for each product, and we see `IndexScan` in each of these loops
 
-So it seems that EdgeDB chooses the Subqueries approach: it makes sense to me because it is the most versatile approach. EdgeDB doesn't have as much knowledge about the data as we do, and it must make decisions that would work OK most of the time. As we saw previously, it is also more lazy when applying filters (the [Subquery beats CTE when targeting 10% or less of the data]({{<ref "posts/postgres-aggregates#filters">}}) in my case).
+So it seems that EdgeDB chooses the Subqueries approach: it makes sense to me because it is the most versatile approach. EdgeDB doesn't have as much knowledge about the data as we do, and it must make decisions that would work OK most of the time. As we saw previously, it is also lazier when applying filters (the [Subquery beats CTE when targeting 10% or less of the data]({{<ref "posts/postgres-aggregates#filters">}}) in my case).
 
 ## Wrapping up {#conclusion}
 
-For the kind of load we measure (aggregation on a whole dataset), it seems that EdgeDB doesn't really have a way to express the [Merging Common Table Expressions approach]({{<ref "posts/postgres-aggregates#3.ctes">}}) that performed the best on the largest dataset. One good news is that, if really needed, EdgeDB still lets you query the underlying data with Postgres, so you can fallback to the same techniques.
+For the kind of load we measure (aggregation on a whole dataset), it seems that EdgeDB doesn't have a way to express the [Merging Common Table Expressions approach]({{<ref "posts/postgres-aggregates#3.ctes">}}) that performed the best on the largest dataset. One good news is that, if needed, EdgeDB still lets you query the underlying data with Postgres, so you can fall back to the same techniques.
 
 I am happy with my investigations on this subject: most of my intuitions came valid, so it validates my understanding of how databases work (to this day!).
 
