@@ -1,0 +1,15 @@
+[project]
+name = "kagamino-blog"
+version = "0.1.0"
+description = "Tooling for blog scripts"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "psycopg[binary]>=3.2.9",
+    "py-spy>=0.4.1",
+    "pytest>=8.4.2",
+    "pytest-benchmark>=5.1.0",
+]
+
+[tool.pytest.ini_options]
+python_files = "tests.py test_*.py"
