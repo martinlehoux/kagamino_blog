@@ -1,0 +1,33 @@
+GroupAggregate  (cost=14206.02..16973.61 rows=8849 width=36) (actual time=15.958..31.415 rows=10000 loops=1)
+  Output: accommodation_id, json_agg(json_build_object('date', date, 'price', price))
+  Group Key: overrides.accommodation_id
+  Buffers: shared hit=6442
+  ->  Gather Merge  (cost=14206.02..16702.25 rows=21433 width=13) (actual time=15.939..17.800 rows=20000 loops=1)
+        Output: accommodation_id, date, price
+        Workers Planned: 2
+        Workers Launched: 2
+        Buffers: shared hit=6442
+        ->  Sort  (cost=13206.00..13228.33 rows=8930 width=13) (actual time=14.210..14.424 rows=6667 loops=3)
+              Output: accommodation_id, date, price
+              Sort Key: overrides.accommodation_id
+              Sort Method: quicksort  Memory: 423kB
+              Buffers: shared hit=6442
+              Worker 0:  actual time=13.430..13.637 rows=6367 loops=1
+                Sort Method: quicksort  Memory: 391kB
+                Buffers: shared hit=2064
+              Worker 1:  actual time=13.558..13.776 rows=6247 loops=1
+                Sort Method: quicksort  Memory: 388kB
+                Buffers: shared hit=2031
+              ->  Parallel Seq Scan on public.overrides  (cost=0.00..12619.99 rows=8930 width=13) (actual time=0.013..13.396 rows=6667 loops=3)
+                    Output: accommodation_id, date, price
+                    Filter: ((overrides.date >= '2025-07-01'::date) AND (overrides.date < '2025-07-08'::date))
+                    Rows Removed by Filter: 326666
+                    Buffers: shared hit=6370
+                    Worker 0:  actual time=0.008..12.658 rows=6367 loops=1
+                      Buffers: shared hit=2028
+                    Worker 1:  actual time=0.018..12.728 rows=6247 loops=1
+                      Buffers: shared hit=1995
+Planning:
+  Buffers: shared hit=129
+Planning Time: 0.292 ms
+Execution Time: 31.781 ms

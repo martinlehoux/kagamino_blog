@@ -1,5 +1,6 @@
 ## Development
 
+- Works with hugo version 0.144
 - `hugo server -D`
 
 ## TODO
