@@ -1,39 +1,250 @@
 ---
-title: ""
+title: PostgreSQL aggregation processing speed
 draft: true
-date:
+date: 2025-09-29
 lastmod:
-description: ""
+description: Comparison of aggregation function speed, on the database and in a host language
 categories:
   - PostgreSQL
 ---
 
-I often need to return several sub-rows for each top-level row of a given query - I will provide a case study later. This does not fit the regular SQL model, but PostgreSQL has powerful constructs and operations to help us build such queries. This post's goal is to compare several approaches, both in term of ease of use and performance. Performance is different here than in regular benchmarks, because it will span from the database to the host programming language: Python. More concretely, here are hypothesis I want to test:
+## Key takeaways
 
-1. Postgres composite types array offer better raw time performance that json objects array
-2. Postgres composite types array offer better data compression performance that json objects array
-3. Postgres composite types array offer better performance up to the host language
-    - Conversion between JSON output from postgres result to python objects should be slower that using composite types
-4. Postgres jsonb functions offer better performances than json functions
+**JSON is more efficient than JSONB when only reading data**
+
+JSONB is useful for data processing, when filtering data on the database. But in this test, the higher cost of creating JSONB is not worth it, and there is also a price to convert it back to text.
+
+**Use `composite binary` for Python data processing**
+
+If you need to compute further in Python, the raw speed of composite binary on Postgres and the OK part in Python makes it the fastest to get data in processable data structures. You can even cast the output in a typed `NamedTuple` and won't need manual parsing
+
+## The problem
+
+Most of the time, the rows of a SQL query matches the domain: a list of user data, a list of product data. But sometimes, there is a sub list for each item: each user's top articles.
+
+When a single sub list is required, several rows can be returned by joins for each root item: several rows for each user. The data is then merged in the host language.
+
+But when there are several sub lists, there is an issue with high cardinality: each user has 15 articles, and 30 comments, and that makes 450 rows for each user, with a lot of duplicated data.
+
+In this case, there are list aggregation functions to generate sub lists at the row level. There are several available, such as `json_agg` and `array_agg`.
+
+**When should you use one or the other?**
 
 ## Data model and setup
 
-As usual, we'll try to solve some real world problem with a certain data model. Data size will be tweaked to a realistic but challenging size, also to ease benchmarks.
+I use a simple data model, and I can tweak the size of the dataset so that the benchmark is interesting.
 
-## Aggregation row results
+The model is an `Accommodation`, that has a default price for rental, and then many `Override` that would allow to specify different prices along the year. There are 10 000 accommodations and 1 000 000 overrides.
 
-The first estimates show 48ms for composite, 58ms for json array and 68ms for jsonb array. It kind of make sense, jsonb is finally costlier and only used when processing the data.
+![Data model](data-model.svg)
 
-To better understand the differences in performance, I want to compare the explain plans that should look very similar. They are indeed composed of the same 4 steps, and only the duration of the last step is changed by the kind of aggregation.
+```sql
+CREATE TABLE accommodations (
+    id serial PRIMARY KEY,
+    name text NOT NULL,
+    default_price numeric(10, 2) NOT NULL
+);
 
-| Method          | Parallel Seq Scan | Sort    | Gather Merge | GroupAggregate |
-| --------------- | ----------------- | ------- | ------------ | -------------- |
-| composite array | 13.7 ms           | 1.02 ms | 5.68 ms      | 4.26 ms        |
-| json array      | 13.4 ms           | 1.03 ms | 3.38 ms      | 13.6 ms        |
-| jsonb array     | 13.6 ms           | 1.05 ms | 3.51 ms      | 23.1 ms        |
+INSERT INTO accommodations (name, default_price)
+SELECT
+    CONCAT('accommodation_', generate_series) AS name,
+    TRUNC(RANDOM() * 100 + 200) AS default_price
+FROM GENERATE_SERIES(1, 10000);
 
-These results seem in line with my expectations, after updating my ideas on JSONB: this binary format is efficient for storage efficiency and querying the data, but at the cost of encoding and decoding speed. In our case, the output is raw text, so we pay the encoding in JSONB by postgres, and certainly the decoding back by the server or our client.
+CREATE TABLE overrides (
+    id serial PRIMARY KEY,
+    accommodation_id integer NOT NULL REFERENCES accommodations (id),
+    date date NOT NULL,
+    price numeric(10, 2) NOT NULL
+);
+ALTER TABLE overrides ADD constraint unique_dates UNIQUE (
+    accommodation_id, date
+);
+INSERT INTO overrides (accommodation_id, date, price) SELECT
+    (generate_series / 100) + 1 AS accommodation_id,
+    '2025-01-01'::date + (generate_series % 100) * '3 days'::interval AS date,
+    TRUNC(RANDOM() * 100 + 200) AS price
+FROM GENERATE_SERIES(1, 999999);
+```
 
-## Python gathering
+## Postgres query engine performance
 
-The python part seem to be low, pure json is still the best. Binary composites are ok.
+The first question is: **what is the fastest query?**
+
+The three data types used are:
+- `composite`, which is like a type safe tuple in any programming language
+- `json`, which represent a JSON value and is stored as text
+- `jsonb`, also represents a JSON value, but stored in an optimised format for querying
+
+Let's take a look at the five queries:
+
+**Composite query**
+
+```sql
+SELECT
+    accommodation_id,
+    array_agg((date, price)) AS daily_configs
+FROM overrides
+WHERE '[2025-07-01,2025-08-01)'::daterange @> date
+GROUP BY overrides.accommodation_id
+```
+
+**JSON object query**
+
+```sql
+SELECT
+    accommodation_id,
+    json_agg(json_build_object(
+        'date', date,
+        'price', price::text
+    )) AS daily_configs
+FROM overrides
+WHERE '[2025-07-01,2025-08-01)'::daterange @> date
+GROUP BY overrides.accommodation_id
+```
+
+**JSON array query**
+
+```sql
+SELECT
+    accommodation_id,
+    json_agg(json_build_array(date, price::text)) AS daily_configs
+FROM overrides
+WHERE '[2025-07-01,2025-08-01)'::daterange @> date
+GROUP BY overrides.accommodation_id
+```
+
+**JSONB object query**
+
+```sql
+SELECT
+    accommodation_id,
+    jsonb_agg(jsonb_build_object(
+        'date', date,
+        'price', price::text
+    )) AS daily_configs
+FROM overrides
+WHERE '[2025-07-01,2025-08-01)'::daterange @> date
+GROUP BY overrides.accommodation_id
+```
+
+**JSONB array query**
+
+```sql
+SELECT
+    accommodation_id,
+    jsonb_agg(jsonb_build_array(date, price::text)) AS daily_configs
+FROM overrides
+WHERE '[2025-07-01,2025-08-01)'::daterange @> date
+GROUP BY overrides.accommodation_id
+```
+
+They look pretty similar.
+
+I run these five queries with `EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS)`, and I can note their total time, alongside the different nodes duration in the plan.
+
+| Query          | Total  | `Seq Scan` | `HashAggregate` |
+| -------------- | ------ | ---------- | --------------- |
+| `composite`    | 80 ms  | 39 ms      | 40 ms           |
+| `json array`   | 120 ms | 37 ms      | 86 ms           |
+| `jsonb array`  | 150 ms | 35 ms      | 112 ms          |
+| `json object`  | 160 ms | 40 ms      | 120 ms          |
+| `jsonb object` | 220 ms | 40 ms      | 180 ms          |
+
+- `Seq Scan` is stable for all queries, which makes sense because the same data is required.
+- `HashAggregate` are different because of the choice of data processing
+- `composite` is the fastest
+- `json` is faster than `jsonb`
+- `array` is faster than `object` 
+
+I thought that JSONB was faster than JSON, but I now understand it is faster for things like filtering data. But in this case, I pay for encoding in the first place, and there is no gain to expect. Only when the source column is JSONB encoded, there is no cost for encoding: it is paid on write.
+
+Array being faster than objects make sense: there is less structure, the data is easier to create. I think there are places where each kind can be useful.
+
+I wasn't sure if Postgres output type (binary or not) would impact the results, but after a quick benchmarks it looks like not.
+
+## Server side
+
+The previous part shows that `composite` is the fastest to execute on the database. But what really matters is the moment when the data is ready to use in the host language. There are two main use cases:
+- **Host processing:** Once the data is ready, I need to apply an algorithm to it: I have a function that can compute the precise pricing for a stay, and then I filter by a maximum price.
+- **JSON output:** The data does not need processing, it is sent back to a client in JSON shape
+
+So each use case may have a unique best solution.
+
+For this experiment, I use Python with `psycopg`, which is a Postgres driver for Python that supports low level configurations. One configuration is `text` versus `binary` output, and applies to each query.
+
+### Python processing
+
+I need to fetch the data and expose it in meaningful Python types. The expected format looks like: `list[tuple[str, list[tuple[date, Decimal]]]]`
+
+```py
+[
+	(
+		"ab18fc69-2f7d-4331-a9d2-615a7957a143",
+		[
+			(date(2025, 9, 28), Decimal("200.50")),
+			...
+		],
+	)
+]
+```
+
+This format may give a boost to `composite binary`, because the driver converts the binary in this exact format. Otherwise I need to manually convert the data. I use the `array` version of all `json` over `object`, because object are costlier the create and read.
+
+| Test                 | total  | postgres | python |
+| -------------------- | ------ | -------- | ------ |
+| `composite binary`   | 220 ms | 80 ms    | 140 ms |
+| `json array text`    | 230 ms | 120 ms   | 110 ms |
+| `json array binary`  | 230 ms | 120 ms   | 110 ms |
+| `jsonb array binary` | 260 ms | 150 ms   | 110 ms |
+| `jsonb array text`   | 270ms  | 150 ms   | 120 ms |
+| `composite text`     | 310 ms | 80 ms    | 230 ms |
+- JSON parsing seems stable across all runs
+- Composite binary seems a little slower, but not by much
+- Composite text is much slower
+
+Composite is not much faster, which can be odd. If `psycopg` uses pure python for data transformation, doing it by hand is not slower: the [NumericLoader](https://github.com/psycopg/psycopg/blob/c9e013d4441d9c9ae5bed61ce8fa561dcb0b9dae/psycopg_c/psycopg_c/types/numeric.pyx#L440) implementation uses optimised Python, but relies on the `Decimal` constructor. The speed on the database makes it the best choice still.
+
+Composite text is very slow. Even tuples need to be parsed manually. I don't get why JSON isn't as slow: it needs to be parsed as array too. The [CompositeLoader](https://github.com/psycopg/psycopg/blob/c9e013d4441d9c9ae5bed61ce8fa561dcb0b9dae/psycopg/psycopg/types/composite.py#L243) is pure Python, while Python's own JSON is certainly optimised C.
+
+### JSON API
+
+I have to fetch the data and format it as JSON. I'm not pushing it to the point i keep it as strings, but it might be the better answer. I'm only interesting in aggregations, so I only format the sub list. The format looks like :`list[tuple[str, list[dict[str, str]]]]`
+
+```py
+[
+    (
+        "ab18fc69-2f7d-4331-a9d2-615a7957a143",
+        [
+	        {"date": "2025-09-28", "price": "200.50"}
+	    ],
+    )
+]
+```
+
+This time, I use JSON objects, as this is the shape of the data transmitted. It should give a boost to all JSON queries, while composite still requires processing.
+
+| Test                  | total  | postgres | python |
+| --------------------- | ------ | -------- | ------ |
+| `json object binary`  | 220 ms | 160 ms   | 60 ms  |
+| `json object text`    | 230 ms | 160 ms   | 70 ms  |
+| `jsonb object binary` | 270 ms | 220 ms   | 50 ms  |
+| `composite text`      | 280 ms | 80 ms    | 200 ms |
+| `jsonb object text`   | 280 ms | 220 ms   | 60 ms  |
+| `composite binary`    | 280 ms | 80 ms    | 200 ms |
+- All `json` processing look the same
+- `composite` in much slower in Python, regardless of binary or text
+
+All JSON outputs are ready for output, so they require the less work on the Python side.
+
+`composite binary` is definitely slower: `psycopg` pays for the conversion in Python `date` and `Decimal`, and then again for converting it back manually.
+
+I don't really know why `composite text` is that slow in both benchmarks.
+
+## Resources
+- [Benchmarking script](test.py)
+
+## TODO
+
+- [ ] Rename folder
+- [ ] Resources: postgres json, postgres aggregation, psycopg
