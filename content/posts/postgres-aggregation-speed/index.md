@@ -155,7 +155,7 @@ I run these five queries with `EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS)`, and 
 - `HashAggregate` are different because of the choice of data processing
 - `composite` is the fastest
 - `json` is faster than `jsonb`
-- `array` is faster than `object` 
+- `array` is faster than `object`
 
 I thought that JSONB was faster than JSON, but I now understand it is faster for things like filtering data. But in this case, I pay for encoding in the first place, and there is no gain to expect. Only when the source column is JSONB encoded, there is no cost for encoding: it is paid on write.
 
@@ -246,5 +246,5 @@ I don't really know why `composite text` is that slow in both benchmarks.
 
 ## TODO
 
-- [ ] Rename folder
 - [ ] Resources: postgres json, postgres aggregation, psycopg
+- [ ] Charts > tables

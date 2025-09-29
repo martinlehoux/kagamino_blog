@@ -1,4 +1,5 @@
 {{ $favicon := resources.GetMatch .Site.Params.favicon }}
+{{ $tiny := ($favicon.Fill "80x80 q90") }}
 
 <meta charset="UTF-8" />
 <meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -11,7 +12,7 @@
 <link rel="canonical" href="{{ .Permalink }}" />
 <link rel="robots" href="/robot.txt" />
 
-<link rel="icon" type="image/x-icon" href="{{ $favicon.RelPermalink }}" />
+<link rel="icon" type="image/x-icon" href="{{ $tiny.RelPermalink }}" />
 
 {{ if .Site.Config.Services.GoogleAnalytics.ID }}
 <!-- Google Analytics -->

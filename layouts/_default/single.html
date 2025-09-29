@@ -7,16 +7,16 @@
     <div class="meta">
       {{/* Publish date */}}
       <time datetime="{{ .PublishDate }}" title='{{ .PublishDate.Format "Mon, Jan 2, 2006, 3:04 PM MST" }}'>
-        {{ .PublishDate.Format "02/01/2006" }} - {{ printf (i18n "estimatedReadingTime") .ReadingTime }}
+        {{ .PublishDate.Format "02/01/2006" }} - Estimated reading time: {{ .ReadingTime }} minutes
       </time>
 
-      {{/* Categories */}} 
-      {{ with (.GetTerms "categories") }} — 
+      {{/* Categories */}}
+      {{ with (.GetTerms "categories") }} —
         {{ range . }}
           <a class="categories" href="{{ .RelPermalink }}" alt="{{ .LinkTitle }}">
             {{ .LinkTitle }}
           </a>
-        {{ end }} 
+        {{ end }}
       {{ end }}
     </div>
   </header>

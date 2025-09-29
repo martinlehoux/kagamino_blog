@@ -1,8 +1,9 @@
-<header class="flex flex-col sm:flex-row items-center gap-5 sm:gap-10 pt-16 py-12">
+<header class="flex flex-col sm:flex-row items-center gap-2 sm:gap-10 py-4">
   {{ partial "header/avatar" . }}
-  
+  {{ partial "header/theme-button" . }}
+
   <div class="flex flex-col gap-5">
-    {{ partial "header/title" . }} 
+    {{ partial "header/title" . }}
     {{ partial "header/nav" . }}
   </div>
 </header>
