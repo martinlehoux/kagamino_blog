@@ -8,7 +8,6 @@
 - Cleanup articles
 - Move to drafts
 - Revisiter le thème
-- Fix srcset
 - SEO
 - Page speed insights
 - Tables may overflow body width on mobile
