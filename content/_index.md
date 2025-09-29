@@ -6,7 +6,7 @@ I am Martin Lehoux, a Software Engineer, and I like writing about Software Desig
 
 I set up a RSS feed for this blog, so you can get updated when new content is available. I use this all the time to aggregate other blogs into one feed, and I think it works great!
 
-I try to contribute from time to time to the Open Source Software community. Here are [some of my contributions](https://github.com/pulls?page=1&q=sort%3Aupdated-desc%20is%3Apr%20author%3A%40me%20archived%3Afalse%20is%3Apublic%20is%3Aclosed%20-org%3Amartinlehoux):
+I try to contribute from time to time to the Open Source Software community. Here are [some of my contributions](https://github.com/pulls?page=1&q=sort%3Aupdated-desc%20is%3Apr%20author%3Amartinlehoux%20archived%3Afalse%20is%3Apublic%20is%3Aclosed%20-org%3Amartinlehoux):
 
 **Pytition**
 
