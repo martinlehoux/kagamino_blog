@@ -143,13 +143,31 @@ They look pretty similar.
 
 I run these five queries with `EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS)`, and I can note their total time, alongside the different nodes duration in the plan.
 
-| Query          | Total  | `Seq Scan` | `HashAggregate` |
-| -------------- | ------ | ---------- | --------------- |
-| `composite`    | 80 ms  | 39 ms      | 40 ms           |
-| `json array`   | 120 ms | 37 ms      | 86 ms           |
-| `jsonb array`  | 150 ms | 35 ms      | 112 ms          |
-| `json object`  | 160 ms | 40 ms      | 120 ms          |
-| `jsonb object` | 220 ms | 40 ms      | 180 ms          |
+{{< chart type="bar" data=`{
+  "labels": ["composite", "json array", "jsonb array", "json object", "jsonb object"],
+  "datasets": [{
+    "label": "Seq Scan (ms)",
+    "data": [39, 37, 35, 40, 40],
+    "backgroundColor": "rgba(16, 185, 129, 0.6)",
+    "borderColor": "rgba(16, 185, 129, 1)",
+    "borderWidth": 1
+  }, {
+    "label": "HashAggregate (ms)",
+    "data": [40, 86, 112, 120, 180],
+    "backgroundColor": "rgba(245, 158, 11, 0.6)",
+    "borderColor": "rgba(245, 158, 11, 1)",
+    "borderWidth": 1
+  }]
+}` options=`{
+  "scales": {
+    "x": { "stacked": true },
+    "y": { "stacked": true, "beginAtZero": true, "title": { "display": true, "text": "Time (ms)" }
+    }
+  },
+  "plugins": {
+    "title": { "display": true, "text": "PostgreSQL Query Performance" }
+  }
+}` >}}
 
 - `Seq Scan` is stable for all queries, which makes sense because the same data is required.
 - `HashAggregate` are different because of the choice of data processing
@@ -191,14 +209,71 @@ I need to fetch the data and expose it in meaningful Python types. The expected 
 
 This format may give a boost to `composite binary`, because the driver converts the binary in this exact format. Otherwise I need to manually convert the data. I use the `array` version of all `json` over `object`, because object are costlier the create and read.
 
-| Test                 | total  | postgres | python |
-| -------------------- | ------ | -------- | ------ |
-| `composite binary`   | 220 ms | 80 ms    | 140 ms |
-| `json array text`    | 230 ms | 120 ms   | 110 ms |
-| `json array binary`  | 230 ms | 120 ms   | 110 ms |
-| `jsonb array binary` | 260 ms | 150 ms   | 110 ms |
-| `jsonb array text`   | 270ms  | 150 ms   | 120 ms |
-| `composite text`     | 310 ms | 80 ms    | 230 ms |
+I use pytest and pytest-benchmark to write the benchmark. Here is a sample of the code I have to write, but the full file is available at the end.
+
+```py
+def load_any_json_array_json(
+    conn: Connection, query: bytes, *, binary: bool
+) -> JSONOut:
+    with conn.cursor() as cursor:
+        cursor.execute(query, binary=binary)
+        rows = cursor.fetchall()
+
+    return [
+        (
+            row[0],
+            [{"date": item[0], "price": item[1]} for item in row[1]],
+        )
+        for row in rows
+    ]
+
+#...
+
+@pytest.mark.benchmark(group="json out")
+class TestJSONOut:
+    @pytest.mark.parametrize("binary", [False, True])
+    @pytest.mark.parametrize(
+        "expr",
+        [JSON_OBJECT_EXPR, JSONB_OBJECT_EXPR],
+        ids=["json object", "jsonb object"],
+    )
+    def test_json_object(
+        self,
+        conn: Connection,
+        benchmark: BenchmarkFixture,
+        binary: bool,
+        expr: str,
+    ):
+        benchmark(
+            load_any_json_object_json, conn, BASE_QUERY.format(expr), binary=binary
+        )
+```
+
+{{< chart type="bar" data=`{
+  "labels": ["composite binary", "json array text", "json array binary", "jsonb array binary", "jsonb array text", "composite text"],
+  "datasets": [{
+    "label": "PostgreSQL (ms)",
+    "data": [80, 120, 120, 150, 150, 80],
+    "backgroundColor": "rgba(59, 130, 246, 0.6)",
+    "borderColor": "rgba(59, 130, 246, 1)",
+    "borderWidth": 1
+  }, {
+    "label": "Python (ms)",
+    "data": [140, 110, 110, 110, 120, 230],
+    "backgroundColor": "rgba(245, 158, 11, 0.6)",
+    "borderColor": "rgba(245, 158, 11, 1)",
+    "borderWidth": 1
+  }]
+}` options=`{
+  "scales": {
+    "x": { "stacked": true },
+    "y": { "stacked": true, "beginAtZero": true, "title": { "display": true, "text": "Time (ms)" } }
+  },
+  "plugins": {
+    "title": { "display": true, "text": "Python Processing Performance" }
+  }
+}` >}}
+
 - JSON parsing seems stable across all runs
 - Composite binary seems a little slower, but not by much
 - Composite text is much slower
@@ -224,14 +299,32 @@ I have to fetch the data and format it as JSON. I'm not pushing it to the point 
 
 This time, I use JSON objects, as this is the shape of the data transmitted. It should give a boost to all JSON queries, while composite still requires processing.
 
-| Test                  | total  | postgres | python |
-| --------------------- | ------ | -------- | ------ |
-| `json object binary`  | 220 ms | 160 ms   | 60 ms  |
-| `json object text`    | 230 ms | 160 ms   | 70 ms  |
-| `jsonb object binary` | 270 ms | 220 ms   | 50 ms  |
-| `composite text`      | 280 ms | 80 ms    | 200 ms |
-| `jsonb object text`   | 280 ms | 220 ms   | 60 ms  |
-| `composite binary`    | 280 ms | 80 ms    | 200 ms |
+{{< chart type="bar" data=`{
+  "labels": ["json object binary", "json object text", "jsonb object binary", "composite text", "jsonb object text", "composite binary"],
+  "datasets": [{
+    "label": "PostgreSQL (ms)",
+    "data": [160, 160, 220, 80, 220, 80],
+    "backgroundColor": "rgba(59, 130, 246, 0.6)",
+    "borderColor": "rgba(59, 130, 246, 1)",
+    "borderWidth": 1
+  }, {
+    "label": "Python (ms)",
+    "data": [60, 70, 50, 200, 60, 200],
+    "backgroundColor": "rgba(245, 158, 11, 0.6)",
+    "borderColor": "rgba(245, 158, 11, 1)",
+    "borderWidth": 1
+  }]
+}` options=`{
+  "scales": {
+    "x": { "stacked": true },
+    "y": { "stacked": true, "beginAtZero": true, "title": { "display": true, "text": "Time (ms)" }
+    }
+  },
+  "plugins": {
+    "title": { "display": true, "text": "JSON API Performance" }
+  }
+}` >}}
+
 - All `json` processing look the same
 - `composite` in much slower in Python, regardless of binary or text
 
@@ -242,9 +335,12 @@ All JSON outputs are ready for output, so they require the less work on the Pyth
 I don't really know why `composite text` is that slow in both benchmarks.
 
 ## Resources
+
 - [Benchmarking script](test.py)
+- [Postgres JSON functions](https://www.postgresql.org/docs/current/functions-json.html)
+- [Postgres aggregation functions](https://www.postgresql.org/docs/current/functions-aggregate.html)
+- [Psycopg](https://www.psycopg.org/)
 
 ## TODO
 
-- [ ] Resources: postgres json, postgres aggregation, psycopg
-- [ ] Charts > tables
+- [ ] Real case study

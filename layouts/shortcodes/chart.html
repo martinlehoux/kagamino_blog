@@ -1,0 +1,34 @@
+{{- $id := printf "chart-%d" (now.UnixNano) -}}
+{{- $type := .Get "type" | default "bar" -}}
+{{- $data := .Get "data" -}}
+{{- $options := .Get "options" | default "{}" -}}
+
+<div class="chart-container mb-5">
+  <canvas id="{{ $id }}"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('{{ $id }}').getContext('2d');
+    new Chart(ctx, {
+      type: '{{ $type }}',
+      data: {{ $data | safeJS }},
+      options: Object.assign({
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: { position: 'top' }
+        }
+      }, {{ $options | safeJS }})
+    });
+  });
+</script>
+
+<style>
+  .chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+  }
+</style>
