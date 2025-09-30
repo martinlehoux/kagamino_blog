@@ -36,7 +36,7 @@ I use a simple data model, and I can tweak the size of the dataset so that the b
 
 The model is an `Accommodation`, that has a default price for rental, and then many `Override` that would allow to specify different prices along the year. There are 10 000 accommodations and 1 000 000 overrides.
 
-![Data model](content/posts/postgres-aggregation-speed/data-model.svg)
+![Data model](data-model.svg)
 
 ```sql
 CREATE TABLE accommodations (
