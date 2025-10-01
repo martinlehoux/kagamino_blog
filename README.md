@@ -1,6 +1,6 @@
 ## Development
 
-- Works with hugo version 0.144
+- `go install github.com/gohugoio/hugo@v0.150`
 - `hugo server -D`
 
 ## TODO
@@ -11,4 +11,3 @@
 - Page speed insights
 - Remove: postcss, tailwind
 - Table of content: `tableOfContents: true`
-- Fix svg not rendered anymore
