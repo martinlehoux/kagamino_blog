@@ -1,7 +1,6 @@
 ## Development
 
 - `go install github.com/gohugoio/hugo@v0.150`
-- `hugo server -D`
 
 ## TODO
 
