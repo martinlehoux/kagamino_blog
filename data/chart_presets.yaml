@@ -1,0 +1,17 @@
+# Chart styling defaults
+defaults:
+  borderWidth: 1
+  barThickness: 8
+  backgroundOpacity: 0.6
+  borderOpacity: 1.0
+
+# Base colors (RGB values without alpha)
+colors:
+  emerald: "16, 185, 129"
+  amber: "245, 158, 11"
+  purple: "147, 51, 234"
+  blue: "59, 130, 246"
+  red: "239, 68, 68"
+  indigo: "99, 102, 241"
+  pink: "236, 72, 153"
+  teal: "20, 184, 166"

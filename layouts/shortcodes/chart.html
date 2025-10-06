@@ -1,7 +1,24 @@
 {{- $id := printf "chart-%d" (now.UnixNano) -}}
 {{- $type := .Get "type" | default "bar" -}}
+{{- $preset := .Get "preset" -}}
+{{- $title := .Get "title" -}}
 {{- $data := .Get "data" -}}
 {{- $options := .Get "options" | default "{}" -}}
+
+{{/* Load chart presets */}}
+{{- $presets := site.Data.chart_presets -}}
+
+{{/* Handle preset-based charts */}}
+{{- if $preset -}}
+  {{- $presetData := index $presets.charts $preset -}}
+  {{- if $presetData -}}
+    {{- $data = $presetData.data | jsonify -}}
+    {{- if and $title (not (index $presetData.options.plugins.title "text")) -}}
+      {{- $presetData = merge $presetData (dict "options" (merge $presetData.options (dict "plugins" (merge $presetData.options.plugins (dict "title" (dict "text" $title)))))) -}}
+    {{- end -}}
+    {{- $options = $presetData.options | jsonify -}}
+  {{- end -}}
+{{- end -}}
 
 <div class="chart-container mb-5">
   <canvas id="{{ $id }}"></canvas>

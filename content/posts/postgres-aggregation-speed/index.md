@@ -31,47 +31,13 @@ In this case, there are list aggregation functions to generate sub lists at the 
 
 After performing this article's investigation, I will implement the learnings to a central query in my day job product: a search query. Because it requires some price filtering in Python, the data loading part from SQL can be quite important. The results below show the time spent in each part of the pipeline. Overall, the changes give about a 5% boost to the query, while reducing maintenance cost. Not bad for a query I spent weeks optimising!
 
-{{< chart type="bar" data=`{
-  "labels": ["Old", "New"],
-  "datasets": [{
-    "label": "Wait (ms)",
-    "data": [1095, 1100],
-    "backgroundColor": "rgba(16, 185, 129, 0.6)",
-    "borderColor": "rgba(16, 185, 129, 1)",
-    "borderWidth": 1,
-    "barThickness": 8
-  }, {
-    "label": "Psycopg parsing (ms)",
-    "data": [45, 180],
-    "backgroundColor": "rgba(245, 158, 11, 0.6)",
-    "borderColor": "rgba(245, 158, 11, 1)",
-    "borderWidth": 1,
-    "barThickness": 8
-  }, {
-    "label": "Custom parsing (ms)",
-    "data": [350, 140],
-    "backgroundColor": "rgba(91, 30, 114, 0.6)",
-    "borderColor": "rgba(91, 30, 114, 1)",
-    "borderWidth": 1,
-    "barThickness": 8
-  }]
-}` options=`{
-  "indexAxis": "y",
-  "scales": {
-    "x": { "stacked": true, "title": { "display": true, "text": "Time (ms)" },
-    "y": { }
-    }
-  },
-  "plugins": {
-    "title": { "display": true, "text": "Case study" }
-  }
-}` >}}
+{{< perf-chart title="Case study" labels="Old,New" datasets="Wait (ms):emerald:1095,1100|Psycopg parsing (ms):amber:45,180|Custom parsing (ms):purple:350,140" >}}
 
 ## Data model and setup
 
 I use a simple data model, and I can tweak the size of the dataset so that the benchmark is interesting.
 
-The model is an `Accommodation`, that has a default price for rental, and then many `Override` that would allow to specify different prices along the year. There are 10 000 accommodations and 1 000 000 overrides.
+The model is an `Accommodation`, that has a default price for rental, and then many `Override` that would allow to specify different prices along the year. There are 10,000 accommodations and 1,000,000 overrides.
 
 ![Data model](data-model.svg)
 
@@ -180,34 +146,7 @@ They look pretty similar.
 
 I run these five queries with `EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS)`, and I can note their total time, alongside the different nodes duration in the plan.
 
-{{< chart type="bar" data=`{
-  "labels": ["composite", "json array", "jsonb array", "json object", "jsonb object"],
-  "datasets": [{
-    "label": "Seq Scan (ms)",
-    "data": [39, 37, 35, 40, 40],
-    "backgroundColor": "rgba(16, 185, 129, 0.6)",
-    "borderColor": "rgba(16, 185, 129, 1)",
-    "borderWidth": 1,
-    "barThickness": 8
-  }, {
-    "label": "HashAggregate (ms)",
-    "data": [40, 86, 112, 120, 180],
-    "backgroundColor": "rgba(245, 158, 11, 0.6)",
-    "borderColor": "rgba(245, 158, 11, 1)",
-    "borderWidth": 1,
-    "barThickness": 8
-  }]
-}` options=`{
-  "indexAxis": "y",
-  "scales": {
-    "x": { "stacked": true, "title": { "display": true, "text": "Time (ms)" },
-    "y": { }
-    }
-  },
-  "plugins": {
-    "title": { "display": true, "text": "PostgreSQL Query Performance" }
-  }
-}` >}}
+{{< perf-chart title="PostgreSQL Query Performance" labels="composite,json array,jsonb array,json object,jsonb object" datasets="Seq Scan (ms):emerald:39,37,35,40,40|HashAggregate (ms):amber:40,86,112,120,180" >}}
 
 - `Seq Scan` is stable for all queries, which makes sense because the same data is required.
 - `HashAggregate` are different because of the choice of data processing
@@ -289,33 +228,7 @@ class TestJSONOut:
         )
 ```
 
-{{< chart type="bar" data=`{
-  "labels": ["composite binary", "json array text", "json array binary", "jsonb array binary", "jsonb array text", "composite text"],
-  "datasets": [{
-    "label": "PostgreSQL (ms)",
-    "data": [80, 120, 120, 150, 150, 80],
-    "backgroundColor": "rgba(59, 130, 246, 0.6)",
-    "borderColor": "rgba(59, 130, 246, 1)",
-    "borderWidth": 1,
-    "barThickness": 8
-  }, {
-    "label": "Python (ms)",
-    "data": [140, 110, 110, 110, 120, 230],
-    "backgroundColor": "rgba(245, 158, 11, 0.6)",
-    "borderColor": "rgba(245, 158, 11, 1)",
-    "borderWidth": 1,
-    "barThickness": 8
-  }]
-}` options=`{
-  "indexAxis": "y",
-  "scales": {
-    "x": { "stacked": true, "title": { "display": true, "text": "Time (ms)" } },
-    "y": { }
-  },
-  "plugins": {
-    "title": { "display": true, "text": "Python Processing Performance" }
-  }
-}` >}}
+{{< perf-chart title="Python Processing Performance" labels="composite binary,json array text,json array binary,jsonb array binary,jsonb array text,composite text" datasets="PostgreSQL (ms):blue:80,120,120,150,150,80|Python (ms):amber:140,110,110,110,120,230" >}}
 
 - JSON parsing seems stable across all runs
 - Composite binary seems a little slower, but not by much
@@ -342,34 +255,7 @@ I have to fetch the data and format it as JSON. I'm not pushing it to the point 
 
 This time, I use JSON objects, as this is the shape of the data transmitted. It should give a boost to all JSON queries, while composite still requires processing.
 
-{{< chart type="bar" data=`{
-  "labels": ["json object binary", "json object text", "jsonb object binary", "composite text", "jsonb object text", "composite binary"],
-  "datasets": [{
-    "label": "PostgreSQL (ms)",
-    "data": [160, 160, 220, 80, 220, 80],
-    "backgroundColor": "rgba(59, 130, 246, 0.6)",
-    "borderColor": "rgba(59, 130, 246, 1)",
-    "borderWidth": 1,
-    "barThickness": 8
-  }, {
-    "label": "Python (ms)",
-    "data": [60, 70, 50, 200, 60, 200],
-    "backgroundColor": "rgba(245, 158, 11, 0.6)",
-    "borderColor": "rgba(245, 158, 11, 1)",
-    "borderWidth": 1,
-    "barThickness": 8
-  }]
-}` options=`{
-  "indexAxis": "y",
-  "scales": {
-    "x": { "stacked": true, "title": { "display": true, "text": "Time (ms)" },
-    "y": { }
-    }
-  },
-  "plugins": {
-    "title": { "display": true, "text": "JSON API Performance" }
-  }
-}` >}}
+{{< perf-chart title="JSON API Performance" labels="json object binary,json object text,jsonb object binary,composite text,jsonb object text,composite binary" datasets="PostgreSQL (ms):blue:160,160,220,80,220,80|Python (ms):amber:60,70,50,200,60,200" >}}
 
 - All `json` processing look the same
 - `composite` in much slower in Python, regardless of binary or text

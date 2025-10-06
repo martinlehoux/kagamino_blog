@@ -1,0 +1,89 @@
+{{/* Performance chart shortcode for consistent chart styling */}}
+{{- $title := .Get "title" -}}
+{{- $labelsRaw := .Get "labels" -}}
+{{- $datasetsRaw := .Get "datasets" -}}
+{{- $xAxisLabel := .Get "xAxisLabel" | default "Time (ms)" -}}
+
+{{/* Load chart configuration */}}
+{{- $config := site.Data.chart_presets -}}
+{{- $defaults := $config.defaults -}}
+{{- $colors := $config.colors -}}
+
+{{/* Parse labels - split by comma */}}
+{{- $labels := split $labelsRaw "," -}}
+
+{{/* Parse datasets parameter: "Label:color:values" */}}
+{{- $parsedDatasets := slice -}}
+{{- if $datasetsRaw -}}
+  {{- $datasetList := split $datasetsRaw "|" -}}
+  {{- range $datasetList -}}
+    {{- $parts := split . ":" -}}
+    {{- if ge (len $parts) 3 -}}
+      {{- $label := index $parts 0 -}}
+      {{- $preset := index $parts 1 -}}
+      {{- $valuesStr := index $parts 2 -}}
+      {{- $values := split $valuesStr "," -}}
+      {{- $colorRgb := index $colors $colorName -}}
+      {{- if $colorRgb -}}
+        {{- $backgroundColor := printf "rgba(%s, %.1f)" $colorRgb $defaults.backgroundOpacity -}}
+        {{- $borderColor := printf "rgba(%s, %.1f)" $colorRgb $defaults.borderOpacity -}}
+        {{- $dataset := dict
+            "label" $label
+            "data" $values
+            "backgroundColor" $backgroundColor
+            "borderColor" $borderColor
+            "borderWidth" $defaults.borderWidth
+            "barThickness" $defaults.barThickness -}}
+        {{- $parsedDatasets = $parsedDatasets | append $dataset -}}
+      {{- end -}}
+    {{- end -}}
+  {{- end -}}
+{{- end -}}
+
+{{/* Generate unique ID */}}
+{{- $id := printf "chart-%d" (now.UnixNano) -}}
+
+<div class="chart-container mb-5">
+  <canvas id="{{ $id }}"></canvas>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    const ctx = document.getElementById('{{ $id }}').getContext('2d');
+    new Chart(ctx, {
+      type: 'bar',
+      data: {{ dict "labels" $labels "datasets" $parsedDatasets | jsonify | safeJS }},
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        indexAxis: 'y',
+        scales: {
+          x: {
+            stacked: true,
+            title: {
+              display: true,
+              text: '{{ $xAxisLabel }}'
+            }
+          },
+          y: { }
+        },
+        plugins: {
+          legend: { position: 'top' },
+          title: {
+            display: true,
+            text: '{{ $title }}'
+          }
+        }
+      }
+    });
+  });
+</script>
+
+<style>
+  .chart-container {
+    position: relative;
+    height: 400px;
+    width: 100%;
+  }
+</style>
