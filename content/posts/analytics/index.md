@@ -1,6 +1,7 @@
 ---
 title: "Managing analytical workloads in startups"
 draft: true
+description: ""
 categories:
   - PostgreSQL
 ---
