@@ -1,7 +1,7 @@
 ---
 title: PostgreSQL aggregation processing speed
-draft: true
-date: 2025-09-29
+draft: false
+date: 2025-10-06
 lastmod:
 description: Comparison of aggregation function speed, on the database and in a host language
 categories:
