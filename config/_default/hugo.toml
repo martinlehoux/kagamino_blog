@@ -3,6 +3,7 @@ copyright = "{year}"                   # To make 2007 - 2022. Just add before {y
 languageCode = 'en-us'
 title = "Kagamino's Blog"
 enableRobotsTXT = true
+ignoreFiles = ["__pycache__"]
 
 # List Config
 summaryLength = 15

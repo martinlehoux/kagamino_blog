@@ -2,7 +2,7 @@
 title: PostgreSQL aggregation processing speed
 draft: false
 date: 2025-10-06
-lastmod:
+lastmod: 2025-10-06
 description: Comparison of aggregation function speed, on the database and in a host language
 categories:
   - PostgreSQL
@@ -268,7 +268,7 @@ I don't really know why `composite text` is that slow in both benchmarks.
 
 ## Resources
 
-- [Benchmarking script](test.py)
+- [Benchmarking script](tests.py)
 - [Postgres JSON functions](https://www.postgresql.org/docs/current/functions-json.html)
 - [Postgres aggregation functions](https://www.postgresql.org/docs/current/functions-aggregate.html)
 - [Psycopg](https://www.psycopg.org/)
