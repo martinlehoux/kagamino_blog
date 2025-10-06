@@ -7,7 +7,6 @@ description: Comparison of aggregation function speed, on the database and in a 
 categories:
   - PostgreSQL
 ---
-
 ## Key takeaways
 
 **JSON is more efficient than JSONB when only reading data**
@@ -29,6 +28,44 @@ But when there are several sub lists, there is an issue with high cardinality: e
 In this case, there are list aggregation functions to generate sub lists at the row level. There are several available, such as `json_agg` and `array_agg`.
 
 **When should you use one or the other?**
+
+After performing this article's investigation, I will implement the learnings to a central query in my day job product: a search query. Because it requires some price filtering in Python, the data loading part from SQL can be quite important. The results below show the time spent in each part of the pipeline. Overall, the changes give about a 5% boost to the query, while reducing maintenance cost. Not bad for a query I spent weeks optimising!
+
+{{< chart type="bar" data=`{
+  "labels": ["Old", "New"],
+  "datasets": [{
+    "label": "Wait (ms)",
+    "data": [1095, 1100],
+    "backgroundColor": "rgba(16, 185, 129, 0.6)",
+    "borderColor": "rgba(16, 185, 129, 1)",
+    "borderWidth": 1,
+    "barThickness": 8
+  }, {
+    "label": "Psycopg parsing (ms)",
+    "data": [45, 180],
+    "backgroundColor": "rgba(245, 158, 11, 0.6)",
+    "borderColor": "rgba(245, 158, 11, 1)",
+    "borderWidth": 1,
+    "barThickness": 8
+  }, {
+    "label": "Custom parsing (ms)",
+    "data": [350, 140],
+    "backgroundColor": "rgba(91, 30, 114, 0.6)",
+    "borderColor": "rgba(91, 30, 114, 1)",
+    "borderWidth": 1,
+    "barThickness": 8
+  }]
+}` options=`{
+  "indexAxis": "y",
+  "scales": {
+    "x": { "stacked": true, "title": { "display": true, "text": "Time (ms)" },
+    "y": { }
+    }
+  },
+  "plugins": {
+    "title": { "display": true, "text": "Case study" }
+  }
+}` >}}
 
 ## Data model and setup
 
@@ -150,18 +187,21 @@ I run these five queries with `EXPLAIN (ANALYZE, COSTS, VERBOSE, BUFFERS)`, and 
     "data": [39, 37, 35, 40, 40],
     "backgroundColor": "rgba(16, 185, 129, 0.6)",
     "borderColor": "rgba(16, 185, 129, 1)",
-    "borderWidth": 1
+    "borderWidth": 1,
+    "barThickness": 8
   }, {
     "label": "HashAggregate (ms)",
     "data": [40, 86, 112, 120, 180],
     "backgroundColor": "rgba(245, 158, 11, 0.6)",
     "borderColor": "rgba(245, 158, 11, 1)",
-    "borderWidth": 1
+    "borderWidth": 1,
+    "barThickness": 8
   }]
 }` options=`{
+  "indexAxis": "y",
   "scales": {
-    "x": { "stacked": true },
-    "y": { "stacked": true, "beginAtZero": true, "title": { "display": true, "text": "Time (ms)" }
+    "x": { "stacked": true, "title": { "display": true, "text": "Time (ms)" },
+    "y": { }
     }
   },
   "plugins": {
@@ -256,18 +296,21 @@ class TestJSONOut:
     "data": [80, 120, 120, 150, 150, 80],
     "backgroundColor": "rgba(59, 130, 246, 0.6)",
     "borderColor": "rgba(59, 130, 246, 1)",
-    "borderWidth": 1
+    "borderWidth": 1,
+    "barThickness": 8
   }, {
     "label": "Python (ms)",
     "data": [140, 110, 110, 110, 120, 230],
     "backgroundColor": "rgba(245, 158, 11, 0.6)",
     "borderColor": "rgba(245, 158, 11, 1)",
-    "borderWidth": 1
+    "borderWidth": 1,
+    "barThickness": 8
   }]
 }` options=`{
+  "indexAxis": "y",
   "scales": {
-    "x": { "stacked": true },
-    "y": { "stacked": true, "beginAtZero": true, "title": { "display": true, "text": "Time (ms)" } }
+    "x": { "stacked": true, "title": { "display": true, "text": "Time (ms)" } },
+    "y": { }
   },
   "plugins": {
     "title": { "display": true, "text": "Python Processing Performance" }
@@ -284,7 +327,7 @@ Composite text is very slow. Even tuples need to be parsed manually. I don't get
 
 ### JSON API
 
-I have to fetch the data and format it as JSON. I'm not pushing it to the point i keep it as strings, but it might be the better answer. I'm only interesting in aggregations, so I only format the sub list. The format looks like :`list[tuple[str, list[dict[str, str]]]]`
+I have to fetch the data and format it as JSON. I'm not pushing it to the point i keep it as strings, but it might be the better answer. I'm only interesting in aggregations, so I only format the sub list. The format looks like: `list[tuple[str, list[dict[str, str]]]]`
 
 ```py
 [
@@ -306,18 +349,21 @@ This time, I use JSON objects, as this is the shape of the data transmitted. It 
     "data": [160, 160, 220, 80, 220, 80],
     "backgroundColor": "rgba(59, 130, 246, 0.6)",
     "borderColor": "rgba(59, 130, 246, 1)",
-    "borderWidth": 1
+    "borderWidth": 1,
+    "barThickness": 8
   }, {
     "label": "Python (ms)",
     "data": [60, 70, 50, 200, 60, 200],
     "backgroundColor": "rgba(245, 158, 11, 0.6)",
     "borderColor": "rgba(245, 158, 11, 1)",
-    "borderWidth": 1
+    "borderWidth": 1,
+    "barThickness": 8
   }]
 }` options=`{
+  "indexAxis": "y",
   "scales": {
-    "x": { "stacked": true },
-    "y": { "stacked": true, "beginAtZero": true, "title": { "display": true, "text": "Time (ms)" }
+    "x": { "stacked": true, "title": { "display": true, "text": "Time (ms)" },
+    "y": { }
     }
   },
   "plugins": {
@@ -340,7 +386,3 @@ I don't really know why `composite text` is that slow in both benchmarks.
 - [Postgres JSON functions](https://www.postgresql.org/docs/current/functions-json.html)
 - [Postgres aggregation functions](https://www.postgresql.org/docs/current/functions-aggregate.html)
 - [Psycopg](https://www.psycopg.org/)
-
-## TODO
-
-- [ ] Real case study
