@@ -8,5 +8,9 @@
 - Move to drafts
 - SEO
 - Page speed insights
-- Remove: postcss, tailwind
+- Remove: postcss, tailwind, theme
 - Table of content: `tableOfContents: true`
+
+## Guidelines
+
+- I > we, now > future - no "we", no "will", no "'ll", no "our", few "you"
