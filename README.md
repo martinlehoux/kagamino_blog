@@ -4,12 +4,14 @@
 
 ## TODO
 
-- Cleanup articles
-- Move to drafts
-- SEO
-- Page speed insights
-- Remove: postcss, tailwind, theme
-- Table of content: `tableOfContents: true`
+- [ ] Cleanup articles
+- [ ] Move to drafts
+- [ ] SEO
+- [ ] Page speed insights
+- [ ] Remove: postcss, tailwind, theme
+- [ ] Table of content: `tableOfContents: true`
+- [ ] Unified CSS reset
+- [ ] Use minify in production?
 
 ## Guidelines
 
