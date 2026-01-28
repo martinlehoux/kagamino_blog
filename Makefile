@@ -6,7 +6,7 @@ deploy:
 dev:
 	hugo server -D
 
-build:
+preprod:
 	rm -rf public/
 	hugo -D -b http://localhost:8000/
 	python -m http.server -d public/

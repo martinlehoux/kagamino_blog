@@ -1,6 +1,5 @@
 ---
 title: Computer setup
-draft: true
 date: 2025-11-05
 ---
 ## Editors
