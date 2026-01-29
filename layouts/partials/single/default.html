@@ -6,8 +6,8 @@
       {{ partial "single/components/metatag/categories" . }}
     </div>
   </header>
+  {{ partial "single/table-of-contents" . }}
   <section class="content text-lg text-gray-800">
-    {{/* {{.TableOfContents}} */}}
     {{ .Content | emojify }}
   </section>
   {{ partial "single/components/comments/comments" . }}

@@ -8,7 +8,6 @@
 - [ ] Move to drafts
 - [ ] SEO
 - [ ] Page speed insights
-- [ ] Remove: postcss, tailwind, theme
 - [ ] Table of content: `tableOfContents: true`
 - [ ] Multi parts series
 - [ ] Alternative to heavy mathjax
