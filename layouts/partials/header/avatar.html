@@ -1,13 +1,12 @@
 {{ $avatar := resources.GetMatch .Site.Params.avatar }}
-{{ $tiny := ($avatar.Fill "400x400 q90") }}
+{{ $avatar = $avatar.Fill "160x160 q90" }}
 
 <div class="avatar">
   <a href="{{ .Site.BaseURL }}">
     <img
-      srcset="{{- with $tiny.RelPermalink -}}{{.}} 80w{{- end -}}"
       src="{{ $avatar.RelPermalink }}"
-      width="{{ $tiny.Width }}"
-      height="{{ $tiny.Height }}"
+      width="{{ $avatar.Width }}"
+      height="{{ $avatar.Height }}"
       alt="{{ .Site.Title }}"
     />
   </a>

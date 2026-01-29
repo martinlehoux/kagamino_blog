@@ -11,7 +11,6 @@
 - [ ] Table of content: `tableOfContents: true`
 - [ ] Multi parts series
 - [ ] Alternative to heavy mathjax
-- [ ] Avatar size (30kB)
 
 ## Guidelines
 
