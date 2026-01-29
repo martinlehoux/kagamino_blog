@@ -10,9 +10,9 @@
 - [ ] Page speed insights
 - [ ] Remove: postcss, tailwind, theme
 - [ ] Table of content: `tableOfContents: true`
-- [ ] Unified CSS reset
-- [ ] Use minify in production?
 - [ ] Multi parts series
+- [ ] Alternative to heavy mathjax
+- [ ] Avatar size (30kB)
 
 ## Guidelines
 

@@ -1,6 +1,8 @@
-deploy:
+build:
 	rm -rf public/
 	hugo
+
+deploy: build
 	rsync --rsync-path="sudo rsync" -avz --delete public/ ubuntu@feed.kagamino.dev:/var/www/kagamino_blog/
 
 dev:
