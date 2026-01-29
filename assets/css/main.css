@@ -311,6 +311,11 @@ button {
   line-height: 1.625;
 }
 
+#content img {
+  max-width: 100%;
+  height: auto;
+}
+
 #content a {
   text-decoration: underline;
   font-weight: 700;
