@@ -12,6 +12,7 @@
 - [ ] Table of content: `tableOfContents: true`
 - [ ] Unified CSS reset
 - [ ] Use minify in production?
+- [ ] Multi parts series
 
 ## Guidelines
 
