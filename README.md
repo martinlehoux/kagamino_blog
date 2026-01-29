@@ -6,11 +6,8 @@
 
 - [ ] Cleanup articles
 - [ ] Move to drafts
-- [ ] SEO
-- [ ] Page speed insights
 - [ ] Table of content: `tableOfContents: true`
 - [ ] Multi parts series
-- [ ] Alternative to heavy mathjax
 
 ## Guidelines
 

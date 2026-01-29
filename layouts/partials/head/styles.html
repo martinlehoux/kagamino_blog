@@ -3,14 +3,6 @@
 {{- $main := resources.Get "css/main.css" -}}
 {{- $styles := slice $reset $main | resources.Concat "css/bundle.css" -}}
 
-{{/* MathJax */}}
-<script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.1/MathJax.js?config=TeX-AMS-MML_HTMLorMML" defer></script>
-<script type="text/x-mathjax-config">
-document.addEventListener('DOMContentLoaded', function () {
-  MathJax.Hub.Config({ tex2jax: { inlineMath: [['$','$'], ['\\(','\\)']] } });
-});
-</script>
-
 {{/* Output */}}
 {{- if eq hugo.Environment "development" -}}
     <link rel="stylesheet" href="{{ $styles.Permalink | absURL }}" />
