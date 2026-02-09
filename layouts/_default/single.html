@@ -7,7 +7,7 @@
     <div class="meta">
       {{/* Publish date */}}
       <time datetime="{{ .PublishDate }}" title='{{ .PublishDate.Format "Mon, Jan 2, 2006, 3:04 PM MST" }}'>
-        {{ .PublishDate.Format "02/01/2006" }} - Estimated reading time: {{ .ReadingTime }} minutes
+        {{ .PublishDate.Format "02/01/2006" }} - {{ .WordCount }} words - Estimated reading time: {{ .ReadingTime }} minutes
       </time>
 
       {{/* Categories */}}

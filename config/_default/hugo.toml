@@ -22,7 +22,14 @@ tabWidth = 4
 noClasses = true
 style = "monokai"
 
+[outputFormats.wordstats]
+mediaType = "application/json"
+baseName = "wordstats"
+isPlainText = true
+notAlternative = true
+
 [outputs]
+home = ["html", "rss", "wordstats"]
 section = ["html", "rss"]
 
 [author]

@@ -2,6 +2,9 @@ build:
 	rm -rf public/
 	hugo
 
+stats: build
+	@python3 scripts/stats.py public/wordstats.json
+
 deploy: build
 	rsync --rsync-path="sudo rsync" -avz --delete public/ ubuntu@feed.kagamino.dev:/var/www/kagamino_blog/
 

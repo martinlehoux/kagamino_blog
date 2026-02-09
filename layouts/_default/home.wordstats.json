@@ -1,0 +1,11 @@
+[
+{{- $pages := where site.RegularPages "Section" "posts" -}}
+{{- $first := true -}}
+{{- range $pages -}}
+{{- if not .Draft -}}
+{{- if not $first }},{{ end -}}
+{"title":{{ .Title | jsonify }},"wordCount":{{ .WordCount }}}
+{{- $first = false -}}
+{{- end -}}
+{{- end -}}
+]
