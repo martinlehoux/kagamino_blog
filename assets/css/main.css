@@ -127,6 +127,13 @@ pre code {
   padding: 0;
 }
 
+pre.mermaid {
+  background: transparent;
+  border: none;
+  padding: 0;
+  text-align: center;
+}
+
 figure {
   margin-bottom: 1.25rem;
 }

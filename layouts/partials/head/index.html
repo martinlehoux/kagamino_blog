@@ -4,3 +4,33 @@
 {{- if or (.HasShortcode "chart") (.HasShortcode "perf-chart") -}}
 <script src="https://cdn.jsdelivr.net/npm/chart.js" defer></script>
 {{- end -}}
+
+{{- if .Page.Store.Get "hasMermaid" -}}
+<script type="module">
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+
+  function getMermaidTheme() {
+    return localStorage.getItem('theme') === 'dark' ? 'dark' : 'default';
+  }
+
+  // Save original sources before mermaid replaces them with SVG
+  document.querySelectorAll('pre.mermaid').forEach(el => {
+    el.setAttribute('data-mermaid-src', el.textContent);
+  });
+
+  mermaid.initialize({ startOnLoad: true, theme: getMermaidTheme() });
+
+  // Re-render on theme toggle (detected via class change on <html>)
+  new MutationObserver(() => {
+    document.querySelectorAll('pre.mermaid').forEach(el => {
+      const src = el.getAttribute('data-mermaid-src');
+      if (src) {
+        el.removeAttribute('data-processed');
+        el.textContent = src;
+      }
+    });
+    mermaid.initialize({ startOnLoad: false, theme: getMermaidTheme() });
+    mermaid.run();
+  }).observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+</script>
+{{- end -}}
