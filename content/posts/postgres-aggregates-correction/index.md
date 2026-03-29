@@ -9,8 +9,7 @@ categories:
 
 In my [first post](/posts/postgres-aggregates/), I expected to show
 that there was a better alternative to subqueries for large,
-multi-join queries. Here's a summary of the results, updated for
-PostgreSQL 18:
+multi-join queries. Here's a summary of the results.
 
 | Query | Time |
 |-------|-----:|
@@ -63,6 +62,8 @@ pattern, that we could say as "good enough". But when this is the
 bottleneck of a query (as it is with 360ms), it's a common idea
 to go and try replace these two blocks by a Index Only Scan.
 
+## A simple fix
+
 The idea of a Bitmap Index Scan + Bitmap Heap Scan is to use the
 index to filter (or prefilter) the rows from the index, which is
 really fast, and then go fetch the actual data from the main Heap
@@ -84,8 +85,6 @@ smart and groups data access from a single page).
 The other weird thing is that the query shouldn't even need to make
 a data fetch: the index is good enough to answer the query, we only
 need to know how many rows were matched for each product.
-
-## A simple fix
 
 The original query contained `count(id)`, and replacing it with
 `count(*)` indeed improved the plan. We now have an Index Only Scan,
