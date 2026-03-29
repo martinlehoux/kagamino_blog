@@ -338,3 +338,20 @@ Subquery Bitmap Heap Scan gets dirty. Data from tables can't fit in
 cache, so each independant loop has a high chance of having to read
 a page from disk. The Shared Hit/Read ratio is ~0.5, and total data
 read from disk goes from 7.7MB in the previous case to 5.5GB.
+
+## Wrapping up
+
+In my benchmarks, it's not so clear which query is the best one. It might
+depend on specific use cases, and requires benchmarking on your infrastructure.
+
+Subqueries are **easier** to write. They excel in **independence**:
+you are less at risk to make row match unrelated row and mess your
+statistics. They are also better at **filtering** overall: they provide
+performance gains for each filter reducing the amount of data, and even
+more with good covering indexes.
+
+CTEs are a bit harder to write and read. They do not benefit from root
+filtering, as the CTEs are computed before. However, they are the
+best for **disk affinity**: they read data in a cache friendly way. They also
+enjoy indexes and partitions to even reduce their disk footprint.
+In production systems, this might provide **greater performance benefits**.
