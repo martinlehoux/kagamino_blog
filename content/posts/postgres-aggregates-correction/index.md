@@ -1,8 +1,8 @@
 ---
-title: ""
+title: "PostgreSQL aggregations: subqueries are not so bad"
 draft: true
-date: 2026-03-07
-description: ""
+date: 2026-03-29
+description: "Following a previous mistake, I find subquery can beat CTE performance, but are still worse for the disk"
 categories:
     - PostgreSQL
 ---
