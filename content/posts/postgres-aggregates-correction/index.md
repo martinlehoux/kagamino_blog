@@ -2,7 +2,7 @@
 title: "PostgreSQL aggregations: subqueries are not so bad"
 draft: true
 date: 2026-03-29
-description: "Following a previous mistake, I find subquery can beat CTE performance, but are still worse for the disk"
+description: "Following a previous mistake, I find subqueries can beat CTE performance, but are still worse for the disk"
 categories:
     - PostgreSQL
 ---
@@ -60,7 +60,7 @@ I noted something weird in the subquery plan: each branch had a
 Bitmap Index Scan followed by a Bitmap Heap Scan. This is a common
 pattern, that we could say as "good enough". But when this is the
 bottleneck of a query (as it is with 360ms), it's a common idea
-to go and try replace these two blocks by a Index Only Scan.
+to go and try to replace these two blocks by an Index Only Scan.
 
 ## A simple fix
 
@@ -70,13 +70,13 @@ really fast, and then go fetch the actual data from the main Heap
 memory (the table per se). For instance, instead of scanning 10GB
 of data, and dumping 90% of it, you use the index to find the 10%
 interesting rows, and then fetch the Heap blocks where the data
-lives. Note that you will actual fetch more than 10% of the disk
+lives. Note that you will actually fetch more than 10% of the disk
 data, because you are forced to load whole memory pages
 (around ~8KB by default). The Bitmap Heap Scan is really good when
 the chosen data lives close together, because you can fetch many
 rows in a single page read.
 
-However, when using subqueries, the independance between loops of
+However, when using subqueries, the independence between loops of
 the query leads to a bad correlation of heap pages: you may access
 several times during the query to the same heap page, but you will
 pay the cost several times too (in a single Bitmap Heap Scan, it's
@@ -225,7 +225,7 @@ read for each query.
 | Subquery `count(*)` | 230MB | — | 160MB | — | 390MB |
 | Subquery `count(id)` | 230MB | 7600MB | 160MB | 780MB | 8770MB |
 
-The last subquery very high disk usage is explained by the very
+The last subquery's very high disk usage is explained by the very
 high number of uncorrelated loops. This means you may fetch a page 10
 times to read 10 rows, instead of reading 10 rows at once in
 one page fetch.
@@ -233,7 +233,7 @@ one page fetch.
 In this setup, it's not much of an issue, because the data is small
 (57MB to read all orders), I have much RAM available, and I'm the
 only one using it. But this is not the case in production systems.
-Obviously tables are much largers (can easily become tens of GBs),
+Obviously tables are much larger (can easily become tens of GBs),
 and data read from disk may often be discarded to let other queries
 cache disk pages. The global setting that controls how much memory
 is allocated to caching disk data is called `shared_buffers` (128MB
@@ -330,12 +330,12 @@ LEFT JOIN product_orders  ON products.id = product_orders.product_id;
 | Subquery `count(*)` | Index Only Scan | 100ms |
 | Merged CTEs | Parallel Seq Scan | 90ms |
 
-I think I can explain the numbers. CTE, as before, only need to read
+I think I can explain the numbers. CTEs, as before, only need to read
 once the data. So it's reading just the right amount from disk.
-Subquery Index Only read less data (index) but many times. The index
+Subquery Index Only reads less data (index) but many times. The index
 fits in the cache, and the Shared Hit/Read ratio is very high (~x10).
 Subquery Bitmap Heap Scan gets dirty. Data from tables can't fit in
-cache, so each independant loop has a high chance of having to read
+cache, so each independent loop has a high chance of having to read
 a page from disk. The Shared Hit/Read ratio is ~0.5, and total data
 read from disk goes from 7.7MB in the previous case to 5.5GB.
 
