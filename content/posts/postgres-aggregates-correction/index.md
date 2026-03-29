@@ -225,12 +225,19 @@ LEFT JOIN product_orders  ON products.id = product_orders.product_id;
 
 ### Disk usage
 
-Another important aspect is disk usage. In the CTE version, we read
-57MB from orders and 7MB from reviews. In the Subquery + Index Only
-Scan, we read 230MB from orders and 160MB from reviews. And in the
-Subquery + Bitmap Heap Scan, we read 230MB from orders index, 7600MB
-from orders, 160MB from reviews index and 780MB from reviews. This
-is explained by the very high number of uncorrelated loops.
+Another important aspect is disk usage. Here's a summary of disk
+read for each query.
+
+| Query | Orders index | Orders | Reviews index | Reviews | Total |
+|-------|-------------:|-------:|--------------:|--------:|------:|
+| Merged CTEs | — | 57MB | — | 7MB | 64MB |
+| Subquery `count(*)` | 230MB | — | 160MB | — | 390MB |
+| Subquery `count(id)` | 230MB | 7600MB | 160MB | 780MB | 8770MB |
+
+The last subquery very high disk usage is explained by the very
+high number of uncorrelated loops. This means you may fetch a page 10
+times to read 10 rows, instead of reading 10 rows at once in
+one page fetch.
 
 In this setup, it's not much of an issue, because the data is small
 (57MB to read all orders), I have much RAM available, and I'm the
@@ -340,7 +347,3 @@ Subquery Bitmap Heap Scan gets dirty. Data from tables can't fit in
 cache, so each independant loop has a high chance of having to read
 a page from disk. The Shared Hit/Read ratio is ~0.5, and total data
 read from disk goes from 7.7MB in the previous case to 5.5GB.
-
-## TODO
-
-- disk usage data
