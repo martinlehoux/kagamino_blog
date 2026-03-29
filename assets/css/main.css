@@ -1,4 +1,10 @@
 /* ========================================
+   Base element overrides (post-reset)
+   ======================================== */
+
+strong, b { font-weight: bold; }
+
+/* ========================================
    CSS Custom Properties (Theme Colors)
    ======================================== */
 
@@ -96,7 +102,7 @@ hr {
   border-color: var(--color-border);
 }
 
-p, hr, pre, dl {
+p, hr, pre, dl, details {
   margin-bottom: 1.25rem;
 }
 

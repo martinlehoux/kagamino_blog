@@ -9,9 +9,16 @@ categories:
 
 In my [first post](/posts/postgres-aggregates/), I expected to show
 that there was a better alternative to subqueries for large,
-multi-join queries. The numbers were good, the best query takes 100ms
-when the subquery one is 500ms. Here's what the subquery looked like.
+multi-join queries. Here's a summary of the results, updated for
+PostgreSQL 18:
 
+| Query | Time |
+|-------|-----:|
+| Subquery | 500ms |
+| Merged CTEs | 100ms |
+
+
+{{< details summary="**Subquery — original**" >}}
 ```sql
 SELECT
   products.id,
@@ -21,10 +28,10 @@ SELECT
 FROM products;
 ```
 
-![Initial subqueries query plan](subqueries-initial.png)
+![Original subqueries query plan](subqueries-original.png)
+{{< /details >}}
 
-And as a reminder, here's what my "best query" - aka "merge CTEs" - looked like.
-
+{{< details summary="**Merged CTEs**" >}}
 ```sql
 WITH product_reviews AS (
   SELECT product_id, COUNT(id) AS num_reviews
@@ -47,9 +54,10 @@ LEFT JOIN product_orders  ON products.id = product_orders.product_id;
 ```
 
 ![Merged CTEs query plan](merged-ctes.png)
+{{< /details >}}
 
 As I recently was sharing my postgres experience with a coworker,
-I noted something weird in the subquery plan: each branch had a 
+I noted something weird in the subquery plan: each branch had a
 Bitmap Index Scan followed by a Bitmap Heap Scan. This is a common
 pattern, that we could say as "good enough". But when this is the
 bottleneck of a query (as it is with 360ms), it's a common idea
@@ -79,12 +87,13 @@ need to know how many rows were matched for each product.
 
 ## A simple fix
 
-The initial query contained `count(id)`, and replacing it with
+The original query contained `count(id)`, and replacing it with
 `count(*)` indeed improved the plan. We now have an Index Only Scan,
 and the query is down from 500ms to 100ms, equal to the previous best.
 Also note that the subquery version gains more performance as we use
 root table filters.
 
+{{< details summary="**Subquery — fixed**" >}}
 ```sql
 SELECT
   products.id,
@@ -95,6 +104,13 @@ FROM products;
 ```
 
 ![Fixed subqueries query plan](subqueries-fixed.png)
+{{< /details >}}
+
+| Query | Scan type | Time |
+|-------|-----------|-----:|
+| Subquery `count(id)` | Bitmap Index + Heap Scan | 500ms |
+| Subquery `count(*)` | Index Only Scan | 100ms |
+| Merged CTEs | Parallel Seq Scan | 100ms |
 
 ## Going further
 
@@ -112,6 +128,7 @@ a price over 900 (the price is random between 0 and 1000), then
 the Subquery approach will filter before running the subqueries,
 and in this case reduce the number of subquery loops by 10x.
 
+{{< details summary="**Subquery — root filter**" >}}
 ```sql
 SELECT
   products.id,
@@ -123,7 +140,9 @@ WHERE products.price > 900;
 ```
 
 ![Subqueries root filter](subqueries-root-filter.png)
+{{< /details >}}
 
+{{< details summary="**Merged CTEs — root filter**" >}}
 ```sql
 WITH product_reviews AS (
   SELECT product_id, COUNT(id) AS num_reviews
@@ -147,16 +166,20 @@ WHERE products.price > 900;
 ```
 
 ![Merged CTEs root filter](merged-ctes-root-filter.png)
+{{< /details >}}
 
-Subquery: 100ms -> 15ms
-CTE: 100ms -> 75ms
+| Query | No filter | Root filter (`price > 900`) |
+|-------|----------:|----------------------------:|
+| Subquery `count(*)` | 100ms | 15ms |
+| Merged CTEs | 100ms | 75ms |
 
 However, when the filtering is in a leaf table, the Index Only Scan
 can no longer be used (`where customer_name ilike '%0'`). As
 expected, the Subquery gets back its Bitmap Heap Scan, and duration goes up.
-However, I can't explain why the CTE goes up too. The Parallel Sec Scan
+However, I can't explain why the CTE goes up too. The Parallel Seq Scan
 goes from 10ms to 100ms, and it doesn't make any sense.
 
+{{< details summary="**Subquery — leaf filter**" >}}
 ```sql
 SELECT
   products.id,
@@ -167,7 +190,9 @@ FROM products;
 ```
 
 ![Subqueries leaf filter query plan](subqueries-leaf-filter.png)
+{{< /details >}}
 
+{{< details summary="**Merged CTEs — leaf filter**" >}}
 ```sql
 WITH product_reviews AS (
   SELECT product_id, COUNT(id) AS num_reviews
@@ -191,9 +216,12 @@ LEFT JOIN product_orders  ON products.id = product_orders.product_id;
 ```
 
 ![Merged CTEs leaf filter query plan](merged-ctes-leaf-filter.png)
+{{< /details >}}
 
-CTE: 100ms -> 140ms
-Subquery: 100ms -> 110ms
+| Query | No filter | Leaf filter (`customer_name ilike '%0'`) |
+|-------|----------:|-----------------------------------------:|
+| Subquery `count(*)` | 100ms | 110ms |
+| Merged CTEs | 100ms | 140ms |
 
 ### Disk usage
 
@@ -220,6 +248,7 @@ I can use docker-compose and blkio_config settings to limit the disk.
 I will also use a much lower `shared_buffers` that can't cache all
 my data, like 16MB.
 
+{{< details summary="**docker-compose.yml**" >}}
 ```yaml
 services:
   postgres:
@@ -244,7 +273,9 @@ services:
         - path: /dev/nvme0n1
           rate: 3000
 ```
+{{< /details >}}
 
+{{< details summary="**Subquery — count(id), Bitmap Heap Scan**" >}}
 ```sql
 SELECT
   products.id,
@@ -254,8 +285,10 @@ SELECT
 FROM products;
 ```
 
-![Initial subqueries with limits](subqueries-initial-limits.png)
+![Original subqueries with limits](subqueries-original-limits.png)
+{{< /details >}}
 
+{{< details summary="**Subquery — count(*), Index Only Scan**" >}}
 ```sql
 SELECT
   products.id,
@@ -266,7 +299,9 @@ FROM products;
 ```
 
 ![Subqueries fixed with limits](subqueries-fixed-limits.png)
+{{< /details >}}
 
+{{< details summary="**Merged CTEs**" >}}
 ```sql
 WITH product_reviews AS (
   SELECT product_id, COUNT(id) AS num_reviews
@@ -289,10 +324,13 @@ LEFT JOIN product_orders  ON products.id = product_orders.product_id;
 ```
 
 ![Merged CTEs with limits](merged-ctes-limits.png)
+{{< /details >}}
 
-Subquery Bitmap Heap: 4200ms
-Subquery Index Only: 100ms
-CTE: 90ms
+| Query | Scan type | Time (throttled disk) |
+|-------|-----------|----------------------:|
+| Subquery `count(id)` | Bitmap Heap Scan | 4200ms |
+| Subquery `count(*)` | Index Only Scan | 100ms |
+| Merged CTEs | Parallel Seq Scan | 90ms |
 
 I think I can explain the numbers. CTE, as before, only need to read
 once the data. So it's reading just the right amount from disk.
@@ -305,4 +343,5 @@ read from disk goes from 7.7MB in the previous case to 5.5GB.
 
 ## TODO
 
-- Uniform SQL + results + query plan
+- hori centered images (mobile?)
+- disk usage data
