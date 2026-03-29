@@ -1,15 +1,15 @@
 ---
 title: "PostgreSQL aggregations: subqueries are not so bad"
-draft: true
+draft: false
 date: 2026-03-29
 description: "Following a previous mistake, I find subqueries can beat CTE performance, but are still worse for the disk"
 categories:
     - PostgreSQL
 ---
 
-In my [first post](/posts/postgres-aggregates/), I expected to show
-that there was a better alternative to subqueries for large,
-multi-join queries. Here's a summary of the results.
+As I recently was sharing my postgres experience with a coworker,
+I noted something weird in a query plan of my
+[first post](/posts/postgres-aggregates/). 
 
 | Query | Time |
 |-------|-----:|
@@ -55,10 +55,9 @@ LEFT JOIN product_orders  ON products.id = product_orders.product_id;
 ![Merged CTEs query plan](merged-ctes.png)
 {{< /details >}}
 
-As I recently was sharing my postgres experience with a coworker,
-I noted something weird in the subquery plan: each branch had a
-Bitmap Index Scan followed by a Bitmap Heap Scan. This is a common
-pattern, that we could say as "good enough". But when this is the
+In the subqueries plan, each branch had a Bitmap Index Scan
+followed by a Bitmap Heap Scan. This is a common pattern, that
+we could say as "good enough". But when this is the
 bottleneck of a query (as it is with 360ms), it's a common idea
 to go and try to replace these two blocks by an Index Only Scan.
 
@@ -111,9 +110,13 @@ FROM products;
 | Subquery `count(*)` | Index Only Scan | 100ms |
 | Merged CTEs | Parallel Seq Scan | 100ms |
 
+But there are still major differences between the subqueries
+approach and the CTEs, notably when we apply filters to these
+queries.
+
 ## Leaf filtering
 
-The Subquery approach is better for root table filtering. If you
+The subqueries approach is better for root table filtering. If you
 want to compute the same statistics, but only for products with
 a price over 900 (the price is random between 0 and 1000), then
 the Subquery approach will filter before running the subqueries,
@@ -166,9 +169,9 @@ WHERE products.price > 900;
 
 However, when the filtering is in a leaf table, the Index Only Scan
 can no longer be used (`where customer_name ilike '%0'`). As
-expected, the Subquery gets back its Bitmap Heap Scan, and duration goes up.
-However, I can't explain why the CTE goes up too. The Parallel Seq Scan
-goes from 10ms to 100ms, and it doesn't make any sense.
+expected, the subqueries version gets back its Bitmap Heap Scan, and
+duration goes up. However, I can't explain why the CTE goes up too.
+The Parallel Seq Scan goes from 10ms to 100ms, and it doesn't make any sense.
 
 {{< details summary="**Subquery — leaf filter**" >}}
 ```sql
@@ -241,9 +244,8 @@ on my machine).
 
 In a simple AWS RDS setup, you can expect your disk to have a
 ~100MB/s read throughput, when your local setup may be 20x faster.
-
 I can use docker-compose and blkio_config settings to limit the disk.
-I will also use a much lower `shared_buffers` that can't cache all
+I also use a much lower `shared_buffers` that can't cache all
 my data, like 16MB.
 
 {{< details summary="**docker-compose.yml**" >}}
