@@ -2,11 +2,13 @@
 title: "Efficient PostgreSQL Aggregations"
 draft: false
 date: 2023-10-04
-lastmod: 2024-07-15
+lastmod: 2026-03-29
 description: "Diving into PostgreSQL query plans to improve our tooling"
 categories:
   - PostgreSQL
 ---
+
+> This article [has a follow-up](/posts/postgres-aggregates-correction/), where I fix a mistake in the subquery benchmarks and explore disk usage under production-like constraints.
 
 I recently stumbled upon a problem while crafting queries for PostgreSQL at work. We had a query with several correlated subqueries that was becoming too slow for the intended use (a search). I thought that using aggregations would solve it, but in fact it slowed it down, and even added bugs from counting duplicate rows.
 
