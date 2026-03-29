@@ -343,5 +343,4 @@ read from disk goes from 7.7MB in the previous case to 5.5GB.
 
 ## TODO
 
-- hori centered images (mobile?)
 - disk usage data
