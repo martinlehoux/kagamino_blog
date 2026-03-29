@@ -9,16 +9,55 @@ categories:
 
 In my [first post](/posts/postgres-aggregates/), I expected to show
 that there was a better alternative to subqueries for large,
-multi-join queries. The numbers were good, the query now took 90ms
-when the subquery one was 600ms.
+multi-join queries. The numbers were good, the best query takes 100ms
+when the subquery one is 500ms. Here's what the subquery looked like.
+
+```sql
+SELECT
+  products.id,
+  products.name,
+  (SELECT COUNT(id) FROM reviews WHERE product_id = products.id) AS num_reviews,
+  (SELECT COUNT(id) FROM orders  WHERE product_id = products.id) AS num_orders
+FROM products;
+```
+
+![Initial subqueries query plan](subqueries-initial.png)
+
+And as a reminder, here's what my "best query" - aka "merge CTEs" - looked like.
+
+```sql
+WITH product_reviews AS (
+  SELECT product_id, COUNT(id) AS num_reviews
+  FROM reviews
+  GROUP BY product_id
+),
+product_orders AS (
+  SELECT product_id, COUNT(id) AS num_orders
+  FROM orders
+  GROUP BY product_id
+)
+SELECT
+  products.id,
+  products.name,
+  COALESCE(product_reviews.num_reviews, 0) AS num_reviews,
+  COALESCE(product_orders.num_orders,   0) AS num_orders
+FROM products
+LEFT JOIN product_reviews ON products.id = product_reviews.product_id
+LEFT JOIN product_orders  ON products.id = product_orders.product_id;
+```
+
+![Merged CTEs query plan](merged-ctes.png)
 
 As I recently was sharing my postgres experience with a coworker,
 I noted something weird in the subquery plan: each branch had a 
 Bitmap Index Scan followed by a Bitmap Heap Scan. This is a common
-pattern, that we could say as "good enough". But when this is the bottleneck of a query (as it was with 420ms), it's a common idea
+pattern, that we could say as "good enough". But when this is the
+bottleneck of a query (as it is with 360ms), it's a common idea
 to go and try replace these two blocks by a Index Only Scan.
 
-The idea of a Bitmap Index Scan + Bitmap Heap Scan is to use the index to filter (or prefilter) the rows from the index, which is really fast, and then go fetch the actual data from the main Heap
+The idea of a Bitmap Index Scan + Bitmap Heap Scan is to use the
+index to filter (or prefilter) the rows from the index, which is
+really fast, and then go fetch the actual data from the main Heap
 memory (the table per se). For instance, instead of scanning 10GB
 of data, and dumping 90% of it, you use the index to find the 10%
 interesting rows, and then fetch the Heap blocks where the data
@@ -42,10 +81,20 @@ need to know how many rows were matched for each product.
 
 The initial query contained `count(id)`, and replacing it with
 `count(*)` indeed improved the plan. We now have an Index Only Scan,
-and the query is down from 540ms (yeah, maybe a postgres upgrade
-since then) to 85ms. Still a bit behind the previous winner, now at
-75ms, but maybe not worth the complexity. Also note that the subquery
-version gains more performance as we use root table filters.
+and the query is down from 500ms to 100ms, equal to the previous best.
+Also note that the subquery version gains more performance as we use
+root table filters.
+
+```sql
+SELECT
+  products.id,
+  products.name,
+  (SELECT COUNT(*) FROM reviews WHERE product_id = products.id) AS num_reviews,
+  (SELECT COUNT(*) FROM orders  WHERE product_id = products.id) AS num_orders
+FROM products;
+```
+
+![Fixed subqueries query plan](subqueries-fixed.png)
 
 ## Going further
 
@@ -63,15 +112,88 @@ a price over 900 (the price is random between 0 and 1000), then
 the Subquery approach will filter before running the subqueries,
 and in this case reduce the number of subquery loops by 10x.
 
-Subquery: 85ms -> 15ms
-CTE: 75ms -> 65ms
+```sql
+SELECT
+  products.id,
+  products.name,
+  (SELECT COUNT(*) FROM reviews WHERE product_id = products.id) AS num_reviews,
+  (SELECT COUNT(*) FROM orders  WHERE product_id = products.id) AS num_orders
+FROM products
+WHERE products.price > 900;
+```
+
+![Subqueries root filter](subqueries-root-filter.png)
+
+```sql
+WITH product_reviews AS (
+  SELECT product_id, COUNT(id) AS num_reviews
+  FROM reviews
+  GROUP BY product_id
+),
+product_orders AS (
+  SELECT product_id, COUNT(id) AS num_orders
+  FROM orders
+  GROUP BY product_id
+)
+SELECT
+  products.id,
+  products.name,
+  COALESCE(product_reviews.num_reviews, 0) AS num_reviews,
+  COALESCE(product_orders.num_orders,   0) AS num_orders
+FROM products
+LEFT JOIN product_reviews ON products.id = product_reviews.product_id
+LEFT JOIN product_orders  ON products.id = product_orders.product_id
+WHERE products.price > 900;
+```
+
+![Merged CTEs root filter](merged-ctes-root-filter.png)
+
+Subquery: 100ms -> 15ms
+CTE: 100ms -> 75ms
 
 However, when the filtering is in a leaf table, the Index Only Scan
 can no longer be used (`where customer_name ilike '%0'`). As
-expected, the Subquery gets back its Bitmap Heap Scan, and duration goes up. However, I can't explain why the CTE goes up too. The Parallel Sec Scan goes from 10ms to 100ms, and it doesn't make any sense.
+expected, the Subquery gets back its Bitmap Heap Scan, and duration goes up.
+However, I can't explain why the CTE goes up too. The Parallel Sec Scan
+goes from 10ms to 100ms, and it doesn't make any sense.
 
-CTE: 75ms -> 145ms
-Subquery: 85ms -> 110ms
+```sql
+SELECT
+  products.id,
+  products.name,
+  (SELECT COUNT(*) FROM reviews WHERE product_id = products.id) AS num_reviews,
+  (SELECT COUNT(*) FROM orders  WHERE product_id = products.id AND customer_name ILIKE '%0') AS num_orders
+FROM products;
+```
+
+![Subqueries leaf filter query plan](subqueries-leaf-filter.png)
+
+```sql
+WITH product_reviews AS (
+  SELECT product_id, COUNT(id) AS num_reviews
+  FROM reviews
+  GROUP BY product_id
+),
+product_orders AS (
+  SELECT product_id, COUNT(id) AS num_orders
+  FROM orders
+  WHERE customer_name ILIKE '%0'
+  GROUP BY product_id
+)
+SELECT
+  products.id,
+  products.name,
+  COALESCE(product_reviews.num_reviews, 0) AS num_reviews,
+  COALESCE(product_orders.num_orders,   0) AS num_orders
+FROM products
+LEFT JOIN product_reviews ON products.id = product_reviews.product_id
+LEFT JOIN product_orders  ON products.id = product_orders.product_id;
+```
+
+![Merged CTEs leaf filter query plan](merged-ctes-leaf-filter.png)
+
+CTE: 100ms -> 140ms
+Subquery: 100ms -> 110ms
 
 ### Disk usage
 
@@ -85,7 +207,7 @@ is explained by the very high number of uncorrelated loops.
 In this setup, it's not much of an issue, because the data is small
 (57MB to read all orders), I have much RAM available, and I'm the
 only one using it. But this is not the case in production systems.
-Obviously tables are much largers (can easily become several GBs),
+Obviously tables are much largers (can easily become tens of GBs),
 and data read from disk may often be discarded to let other queries
 cache disk pages. The global setting that controls how much memory
 is allocated to caching disk data is called `shared_buffers` (128MB
@@ -123,9 +245,54 @@ services:
           rate: 3000
 ```
 
-Subquery Bitmap Heap: 4600ms
-Subquery Index Only: 90ms
-CTE: 75ms
+```sql
+SELECT
+  products.id,
+  products.name,
+  (SELECT COUNT(id) FROM reviews WHERE product_id = products.id) AS num_reviews,
+  (SELECT COUNT(id) FROM orders  WHERE product_id = products.id) AS num_orders
+FROM products;
+```
+
+![Initial subqueries with limits](subqueries-initial-limits.png)
+
+```sql
+SELECT
+  products.id,
+  products.name,
+  (SELECT COUNT(*) FROM reviews WHERE product_id = products.id) AS num_reviews,
+  (SELECT COUNT(*) FROM orders  WHERE product_id = products.id) AS num_orders
+FROM products;
+```
+
+![Subqueries fixed with limits](subqueries-fixed-limits.png)
+
+```sql
+WITH product_reviews AS (
+  SELECT product_id, COUNT(id) AS num_reviews
+  FROM reviews
+  GROUP BY product_id
+),
+product_orders AS (
+  SELECT product_id, COUNT(id) AS num_orders
+  FROM orders
+  GROUP BY product_id
+)
+SELECT
+  products.id,
+  products.name,
+  COALESCE(product_reviews.num_reviews, 0) AS num_reviews,
+  COALESCE(product_orders.num_orders,   0) AS num_orders
+FROM products
+LEFT JOIN product_reviews ON products.id = product_reviews.product_id
+LEFT JOIN product_orders  ON products.id = product_orders.product_id;
+```
+
+![Merged CTEs with limits](merged-ctes-limits.png)
+
+Subquery Bitmap Heap: 4200ms
+Subquery Index Only: 100ms
+CTE: 90ms
 
 I think I can explain the numbers. CTE, as before, only need to read
 once the data. So it's reading just the right amount from disk.
@@ -135,3 +302,7 @@ Subquery Bitmap Heap Scan gets dirty. Data from tables can't fit in
 cache, so each independant loop has a high chance of having to read
 a page from disk. The Shared Hit/Read ratio is ~0.5, and total data
 read from disk goes from 7.7MB in the previous case to 5.5GB.
+
+## TODO
+
+- Uniform SQL + results + query plan
