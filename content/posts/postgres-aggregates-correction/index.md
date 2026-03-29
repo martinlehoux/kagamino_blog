@@ -111,15 +111,7 @@ FROM products;
 | Subquery `count(*)` | Index Only Scan | 100ms |
 | Merged CTEs | Parallel Seq Scan | 100ms |
 
-## Going further
-
-I have mixed feelings about this updated version. When I discovered
-this, I thought the whole point of my article collapsed. But now
-that I did the work to show it, I'm not so sure. Here are some
-updated limitations to the use of subqueries.
-
-
-### Leaf filtering
+## Leaf filtering
 
 The Subquery approach is better for root table filtering. If you
 want to compute the same statistics, but only for products with
@@ -222,7 +214,7 @@ LEFT JOIN product_orders  ON products.id = product_orders.product_id;
 | Subquery `count(*)` | 100ms | 110ms |
 | Merged CTEs | 100ms | 140ms |
 
-### Disk usage
+## Disk usage
 
 Another important aspect is disk usage. Here's a summary of disk
 read for each query.
