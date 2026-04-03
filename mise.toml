@@ -1,23 +1,28 @@
 [tasks.build]
+description = "Build the site"
 run = [
     "rm -rf public/",
-    "hugo"   
+    "hugo",
 ]
 
 [tasks.stats]
+description = "Show word stats"
 depends = ["build"]
 run = "python3 scripts/stats.py public/wordstats.json"
 
 [tasks.deploy]
+description = "Build and deploy to production"
 depends = ["build"]
 run = 'rsync --rsync-path="sudo rsync" -avz --delete public/ ubuntu@feed.kagamino.dev:/var/www/kagamino_blog/'
 
 [tasks.dev]
+description = "Start dev server (with drafts)"
 run = "hugo server -D"
 
 [tasks.preprod]
+description = "Build and serve locally for preprod"
 run = [
     "rm -rf public/",
     "hugo -D -b http://localhost:8000/",
-    "python -m http.server -d public/"
+    "python -m http.server -d public/",
 ]
