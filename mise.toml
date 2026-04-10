@@ -1,0 +1,23 @@
+[tasks.build]
+run = [
+    "rm -rf public/",
+    "hugo"   
+]
+
+[tasks.stats]
+depends = ["build"]
+run = "python3 scripts/stats.py public/wordstats.json"
+
+[tasks.deploy]
+depends = ["build"]
+run = 'rsync --rsync-path="sudo rsync" -avz --delete public/ ubuntu@feed.kagamino.dev:/var/www/kagamino_blog/'
+
+[tasks.dev]
+run = "hugo server -D"
+
+[tasks.preprod]
+run = [
+    "rm -rf public/",
+    "hugo -D -b http://localhost:8000/",
+    "python -m http.server -d public/"
+]
