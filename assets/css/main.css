@@ -106,7 +106,7 @@ p, hr, pre, dl, details {
   margin-bottom: 1.25rem;
 }
 
-article > h1 {
+article > h1, article > h2 {
   margin-bottom: 0.25rem;
 }
 
@@ -349,14 +349,18 @@ button {
   color: var(--color-light);
 }
 
-#content h1 > a {
+#content article > h2 {
+  line-height: 1.75rem;
+}
+
+#content h2 > a {
   text-decoration: none;
   font-size: 1.25rem;
   font-weight: 700;
   color: var(--color-heading);
 }
 
-#content h1 > a:hover {
+#content h2 > a:hover {
   text-decoration: underline;
   color: var(--color-heading);
 }
