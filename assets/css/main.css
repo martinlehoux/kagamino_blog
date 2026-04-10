@@ -177,15 +177,19 @@ header h1 {
 }
 
 /* Tables */
+.table-wrapper {
+  display: block;
+  overflow-x: auto;
+  margin-bottom: 1.25rem;
+}
+
 table {
   width: 100%;
   border: 1px solid var(--color-border);
   border-radius: 0.375rem;
   border-collapse: separate;
   border-spacing: 0;
-  margin-bottom: 1.25rem;
-  display: block;
-  overflow-x: auto;
+  display: table;
 }
 
 thead th {
@@ -209,7 +213,7 @@ tbody td:last-child { border-right: 0; }
 tbody tr:last-child td { border-bottom: 0; }
 
 @media (min-width: 768px) {
-  table { display: table; overflow-x: visible; }
+  table { width: auto; min-width: 500px; }
   thead th, tbody td { white-space: normal; }
 }
 
