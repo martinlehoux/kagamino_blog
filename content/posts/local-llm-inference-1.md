@@ -85,7 +85,8 @@ There are a few axis I want to experiment inference speed against:
 
 And of course an agentic coding scenario.
 
-## LLM usage
-
-- Parsing logs and create markdown tables
+{{< alert info "LLM usage in this article" >}}
+- Parsing logs and creating markdown tables
+- Generating charts
 - Acting as Publisher
+{{< /alert >}}

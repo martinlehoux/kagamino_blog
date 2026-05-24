@@ -4,8 +4,6 @@
 
 ## TODO
 
-- [ ] Cleanup articles
-- [ ] Move to drafts
 - [ ] Table of content: `tableOfContents: true`
 - [ ] Multi parts series
 
