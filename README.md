@@ -4,7 +4,7 @@
 
 ## TODO
 
-- [ ] Table of content: `tableOfContents: true`
+- [ ] Table of content: `tableOfContents: true`: Works, but too big
 - [ ] Multi parts series
 
 ## Guidelines
