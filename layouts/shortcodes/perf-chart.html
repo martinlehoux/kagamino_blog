@@ -3,6 +3,8 @@
 {{- $labelsRaw := .Get "labels" -}}
 {{- $datasetsRaw := .Get "datasets" -}}
 {{- $xAxisLabel := .Get "xAxisLabel" | default "Time (ms)" -}}
+{{- $stackedRaw := .Get "stacked" | default "true" -}}
+{{- $stacked := ne $stackedRaw "false" -}}
 
 {{/* Load chart configuration */}}
 {{- $config := site.Data.chart_presets -}}
@@ -50,22 +52,24 @@
 <script>
   document.addEventListener('DOMContentLoaded', function() {
     const ctx = document.getElementById('{{ $id }}').getContext('2d');
+    const chartData = {{ dict "labels" $labels "datasets" $parsedDatasets | jsonify | safeJS }};
+    chartData.datasets = chartData.datasets.map(ds => ({ ...ds, data: ds.data.map(Number) }));
     new Chart(ctx, {
       type: 'bar',
-      data: {{ dict "labels" $labels "datasets" $parsedDatasets | jsonify | safeJS }},
+      data: chartData,
       options: {
         responsive: true,
         maintainAspectRatio: false,
         indexAxis: 'y',
         scales: {
           x: {
-            stacked: true,
+            stacked: {{ $stacked }},
             title: {
               display: true,
               text: '{{ $xAxisLabel }}'
             }
           },
-          y: { }
+          y: { stacked: {{ $stacked }} }
         },
         plugins: {
           legend: { position: 'top' },
