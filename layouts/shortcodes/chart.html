@@ -6,7 +6,7 @@
 {{- $options := .Get "options" | default "{}" -}}
 
 {{/* Load chart presets */}}
-{{- $presets := site.Data.chart_presets -}}
+{{- $presets := hugo.Data.chart_presets -}}
 
 {{/* Handle preset-based charts */}}
 {{- if $preset -}}
