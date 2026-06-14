@@ -29,7 +29,7 @@ isPlainText = true
 notAlternative = true
 
 [outputs]
-home = ["html", "rss", "wordstats"]
+home = ["html", "rss", "wordstats", "sitemap"]
 section = ["html", "rss"]
 
 [author]

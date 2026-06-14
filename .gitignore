@@ -7,3 +7,6 @@ experimentationanalyticsevent
 
 .obsidian
 __pycache__
+.hugo_build.lock
+.venv
+resources

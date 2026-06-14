@@ -4,7 +4,7 @@
 {{ $captionPosition := .Get "caption-position" }}
 
 <figure class='mb-5'>
-  <img src="{{ $img.RelPermalink }}" {{ with $alt }} alt="{{ . }}" {{ end }} width="{{ $img.Width }}" height="{{ $img.Height }}" />
+  <img src="{{ $img.RelPermalink }}" {{ with $alt }} alt="{{ . }}" {{ end }} width="{{ $img.Width }}" height="{{ $img.Height }}" loading="lazy" />
   
   {{ with $caption }}
     <figcaption 
