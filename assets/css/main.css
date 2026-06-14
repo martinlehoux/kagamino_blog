@@ -3,6 +3,7 @@
    ======================================== */
 
 strong, b { font-weight: bold; }
+em, i { font-style: italic; }
 
 /* ========================================
    CSS Custom Properties (Theme Colors)
