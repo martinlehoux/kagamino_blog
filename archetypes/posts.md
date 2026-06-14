@@ -2,10 +2,10 @@
 title: "{{ replace .Name '-' ' ' | title }}"
 date: {{ .Date }}
 draft: true # Set 'false' to publish
-tableOfContents: false # Enable/disable Table of Contents
 description: ''
+# tableOfContents: false # Uncomment to disable Table of Contents
 categories:
-  - Sem categoria
+  - Uncategorized
 tags:
   -
 ---

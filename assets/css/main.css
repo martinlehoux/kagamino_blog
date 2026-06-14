@@ -480,35 +480,100 @@ button {
   color: var(--color-error-text);
 }
 
-/* Table of contents */
+/* ========================================
+   Table of Contents (collapsible + sticky)
+   ======================================== */
+
 #content .table-of-contents {
+  position: sticky;
+  top: 1rem;
+  z-index: 10;
   background-color: var(--color-bg-muted);
-  color: var(--color-text);
-  padding: 1rem;
   border: 1px solid var(--color-border);
   border-radius: 0.5rem;
+  margin-bottom: 1.25rem;
+  overflow: hidden;
+}
+
+#content .table-of-contents[open] {
+  padding: 0 1rem 0.75rem 1rem;
+}
+
+#content .toc-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+  font-weight: 700;
+  font-size: 0.875rem;
+  color: var(--color-heading);
+  padding: 0.65rem 1rem;
+  background-color: var(--color-bg-muted);
+  border-radius: 0.5rem;
+  transition: background-color 0.15s;
+}
+
+#content .table-of-contents[open] .toc-header {
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: 0.75rem;
+  padding-left: 0;
+  padding-right: 0;
+  border-radius: 0;
+}
+
+/* Hide default marker in Safari/Firefox */
+#content .toc-header::-webkit-details-marker {
+  display: none;
+}
+
+#content .toc-header:hover {
+  background-color: var(--color-bg-hover);
+}
+
+#content .table-of-contents[open] .toc-header:hover {
+  background-color: transparent;
+}
+
+#content .toc-chevron {
+  flex-shrink: 0;
+  transition: transform 0.2s ease;
+  color: var(--color-muted);
+}
+
+#content .table-of-contents[open] .toc-chevron {
+  transform: rotate(180deg);
 }
 
 #content .table-of-contents #TableOfContents ul {
-  list-style-type: decimal;
-  list-style-position: inside;
+  list-style: none;
+  margin-left: 0;
+  margin-bottom: 0;
+}
+
+#content .table-of-contents #TableOfContents ul ul {
   margin-left: 1rem;
 }
 
 #content .table-of-contents #TableOfContents ul li {
-  margin: 0.5rem 0;
-  font-size: 1rem;
+  margin: 0.35rem 0;
+  font-size: 0.9rem;
+  line-height: 1.4;
 }
 
 #content .table-of-contents #TableOfContents ul li a {
   font-weight: 400;
   text-decoration: none;
-  color: var(--color-text);
+  color: var(--color-muted);
+  display: block;
+  padding: 0.15rem 0;
+  transition: color 0.15s;
 }
 
 #content .table-of-contents #TableOfContents ul li a:hover {
+  color: var(--color-accent);
   text-decoration: underline;
-  color: var(--color-accent-hover);
 }
 
 /* Pagination button */
@@ -606,6 +671,7 @@ button {
 .gap-1 { gap: 0.25rem; }
 .gap-2 { gap: 0.5rem; }
 .gap-3 { gap: 0.75rem; }
+.gap-4 { gap: 1rem; }
 .gap-5 { gap: 1.25rem; }
 .gap-7 { gap: 1.75rem; }
 .gap-10 { gap: 2.5rem; }
@@ -665,6 +731,7 @@ button {
 
 @media (min-width: 640px) {
   .sm\:flex-row { flex-direction: row; }
+  .sm\:gap-4 { gap: 1rem; }
   .sm\:gap-10 { gap: 2.5rem; }
   .sm\:grid-cols-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .sm\:text-left { text-align: left; }

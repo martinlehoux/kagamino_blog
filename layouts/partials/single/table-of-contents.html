@@ -1,6 +1,11 @@
-{{ if and .TableOfContents .Params.tableOfContents }}
-  <aside class="table-of-contents">
-    <h2 class="title-small">{{ i18n "summary" }}</h2>
-    {{ .TableOfContents }}
-  </aside>
+{{ if and .TableOfContents (ne .Params.tableOfContents false) }}
+<details class="table-of-contents">
+  <summary class="toc-header">
+    <span>On this page</span>
+    <svg class="toc-chevron" width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="4 6 8 10 12 6" />
+    </svg>
+  </summary>
+  {{ .TableOfContents }}
+</details>
 {{ end }}
