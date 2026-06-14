@@ -1,6 +1,6 @@
 baseURL = 'https://blog.kagamino.dev/'
 copyright = "{year}"                   # To make 2007 - 2022. Just add before {year} example: 2007 - {year}
-languageCode = 'en-us'
+locale = 'en-US'
 title = "Kagamino's Blog"
 enableRobotsTXT = true
 ignoreFiles = ["__pycache__"]

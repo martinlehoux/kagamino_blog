@@ -1,6 +1,6 @@
 ## Development
 
-- `go install github.com/gohugoio/hugo@v0.150`
+- `go install github.com/gohugoio/hugo@v0.163` (tested with v0.163.1)
 
 ## TODO
 
