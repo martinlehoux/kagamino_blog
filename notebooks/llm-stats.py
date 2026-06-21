@@ -12,98 +12,40 @@ def _():
 
     return alt, mo, pd
 
-
+# https://artificialanalysis.ai/leaderboards/models
 @app.cell
 def _(pd):
-    # Data — add new models here.
-    #   price: blended $/1M tokens
-    # https://artificialanalysis.ai/leaderboards/models
-    MODELS = [
-        {
-            "name": "DeepSeek V4 Flash",
-            "aai_score": 37,
-            "price": 0.08,
-            "tok_per_sec": 101,
-        },
-        {
-            "name": "DeepSeek V4 Pro",
-            "aai_score": 44,
-            "price": 0.18,
-            "tok_per_sec": 85,
-        },
-        {
-            "name": "Claude Opus 4.7",
-            "aai_score": 54,
-            "price": 3.85,
-            "tok_per_sec": 51,
-        },
-        {
-            "name": "Claude Opus 4.8",
-            "aai_score": 56,
-            "price": 3.85,
-            "tok_per_sec": 58,
-        },
-        {
-            "name": "Claude Sonnet 4.6",
-            "aai_score": 47,
-            "price": 2.31,
-            "tok_per_sec": 50,
-        },
-        {
-            "name": "Claude Haiku 4.5",
-            "aai_score": 30,
-            "price": 0.77,
-            "tok_per_sec": 93,
-        },
-        {
-            "name": "Gemini 3.5 Flash",
-            "aai_score": 50,
-            "price": 1.31,
-            "tok_per_sec": 161,
-        },
-        {
-            "name": "MiMo 2.5",
-            "aai_score": 40,
-            "price": 0.06,
-            "tok_per_sec": 79,
-        },
-        {
-            "name": "Nemotron 3 Ultra",
-            "aai_score": 38,
-            "price": 0.58,
-            "tok_per_sec": 164,
-        },
-        {
-            "name": "Gemma 4 E2B (local)",
-            "aai_score": 9,
-            "price": 0.0,
-            "tok_per_sec": 60,
-        },
-        {
-            "name": "GLM 5.2",
-            "aai_score": 51,
-            "price": 0.90,
-            "tok_per_sec": 82
-        }
+    COLUMNS = ["name", "aai_score", "price", "tok_per_sec"]
+    ROWS = [
+        ["DeepSeek V4 Flash", 37, 0.08, 101],
+        ["DeepSeek V4 Pro", 44, 0.18, 85],
+        ["Claude Opus 4.7", 54, 3.85, 51],
+        ["Claude Opus 4.8", 56, 3.85, 58],
+        ["Claude Sonnet 4.6", 47, 2.31, 50],
+        ["Claude Haiku 4.5", 30, 0.77, 93],
+        ["Gemini 3.5 Flash", 50, 1.31, 161],
+        ["MiMo 2.5", 40, 0.06, 79],
+        ["Nemotron 3 Ultra", 38, 0.58, 164],
+        ["Gemma 4 E2B (local)", 9, 0.0, 60],
+        ["GLM 5.2", 51, 0.90, 82],
+        ["MiniMax M3", 44, 0.22, 68],
     ]
-
-    df = pd.DataFrame(MODELS)
-    return MODELS, df
+    df = pd.DataFrame(ROWS, columns=COLUMNS)
+    return df
 
 
 @app.cell
-def _(MODELS, mo):
+def _(df, mo):
     mo.md(f"""
     # 🤖 LLM Stats Tracker
 
-    **{len(MODELS)} models tracked** — edit the `MODELS` list above to add more.
+    **{len(df)} models tracked**
     """)
     return
 
 
 @app.cell
 def _(alt, df):
-    # Price vs Quality (colour = tok/sec)
     scatter = (
         alt.Chart(df)
         .mark_circle(size=200)
@@ -130,7 +72,6 @@ def _(alt, df):
 
 @app.cell
 def _(alt, df):
-    # Speed vs Quality (colour = price)
     bubble = (
         alt.Chart(df)
         .mark_circle(size=120, opacity=0.7)
