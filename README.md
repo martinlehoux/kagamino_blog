@@ -1,6 +1,6 @@
 ## Development
 
-- `go install github.com/gohugoio/hugo@v0.163` (tested with v0.163.1)
+- `mise install` (Hugo pinned to v0.164.0 in `mise.toml`)
 
 ## TODO
 
